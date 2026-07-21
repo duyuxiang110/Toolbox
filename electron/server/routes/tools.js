@@ -8,14 +8,40 @@ const fs = require('fs');
 const os = require('os');
 const multer = require('multer');
 const ffmpeg = require('fluent-ffmpeg');
-const ffmpegPath = require('ffmpeg-static');
-const ffprobePath = require('ffprobe-static').path;
 
 const router = express.Router();
 
-// 设置 ffmpeg / ffprobe 二进制路径
-ffmpeg.setFfmpegPath(ffmpegPath);
-ffmpeg.setFfprobePath(ffprobePath);
+/**
+ * 解析可执行的二进制路径。
+ * 打包后 electron-builder 通过 asarUnpack 把二进制解包到 app.asar.unpacked，
+ * 但 require 返回的路径仍指向 app.asar（虚拟归档内，无法执行），需重定向。
+ * 兼容 Windows(\) 与 *nix(/) 两种分隔符；开发环境路径不含 app.asar，为空操作。
+ */
+function resolveBinary(p) {
+  return p ? p.replace(/app\.asar([\\/])/, 'app.asar.unpacked$1') : null;
+}
+
+const ffmpegPath = resolveBinary(require('ffmpeg-static'));
+const ffprobePath = resolveBinary(require('ffprobe-static').path);
+
+// 校验二进制是否真实存在（ffmpeg-static 仅内置"安装时所在平台"的二进制，
+// 跨平台构建时目标平台的 ffmpeg 可能缺失 → 此时视频功能优雅降级而非崩溃）
+const FFMPEG_AVAILABLE =
+  !!ffmpegPath && fs.existsSync(ffmpegPath) && !!ffprobePath && fs.existsSync(ffprobePath);
+
+if (FFMPEG_AVAILABLE) {
+  ffmpeg.setFfmpegPath(ffmpegPath);
+  ffmpeg.setFfprobePath(ffprobePath);
+} else {
+  console.error('[Tools] 未找到可用的 ffmpeg/ffprobe 二进制，视频功能不可用。', {
+    ffmpegPath,
+    ffprobePath,
+  });
+}
+
+// 二进制缺失时的统一提示
+const FFMPEG_UNAVAILABLE_MSG =
+  '当前平台缺少 ffmpeg 组件，视频功能不可用。请在目标平台（Windows/macOS）上重新安装依赖并构建应用。';
 
 // 临时文件目录
 const TMP_DIR = path.join(os.tmpdir(), 'electron-demo-video');
@@ -92,6 +118,9 @@ function probeVideo(filePath) {
 router.post('/video-info', upload.single('video'), async (req, res, next) => {
   const inputPath = req.file?.path;
   try {
+    if (!FFMPEG_AVAILABLE) {
+      return res.status(503).json({ success: false, message: FFMPEG_UNAVAILABLE_MSG });
+    }
     if (!inputPath) {
       return res.status(400).json({ success: false, message: '请上传视频文件' });
     }
@@ -123,6 +152,10 @@ router.post('/video-compress', upload.single('video'), async (req, res, next) =>
     : null;
 
   try {
+    if (!FFMPEG_AVAILABLE) {
+      if (inputPath) fs.unlink(inputPath, () => {});
+      return res.status(503).json({ success: false, message: FFMPEG_UNAVAILABLE_MSG });
+    }
     if (!inputPath) {
       return res.status(400).json({ success: false, message: '请上传视频文件' });
     }

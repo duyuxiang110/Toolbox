@@ -89,10 +89,20 @@ async function startServer() {
   }
 
   // 启动监听
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     server = app.listen(config.server.port, '127.0.0.1', () => {
       console.log(`[Server] SSO API 服务已启动: http://127.0.0.1:${config.server.port}`);
       resolve(server);
+    });
+    // 监听失败（如端口被占用）不阻塞应用启动，仅记录错误
+    server.on('error', (err) => {
+      if (err.code === 'EADDRINUSE') {
+        console.error(`[Server] 端口 ${config.server.port} 已被占用，API 服务未能启动`);
+      } else {
+        console.error('[Server] 监听失败:', err.message);
+      }
+      server = null;
+      resolve(null);
     });
   });
 }

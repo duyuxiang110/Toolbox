@@ -7,6 +7,21 @@ const isDev = !app.isPackaged;
 
 let mainWindow;
 
+// 单实例锁：必须在 whenReady 之前获取。未拿到锁说明已有实例在跑，直接退出。
+const gotTheLock = app.requestSingleInstanceLock();
+if (!gotTheLock) {
+  app.quit();
+} else {
+  // 第二实例启动时，将焦点回到已有窗口
+  app.on("second-instance", () => {
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.show();
+      mainWindow.focus();
+    }
+  });
+}
+
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1200,
@@ -21,17 +36,6 @@ function createWindow() {
     },
     show: false,
   });
-
-  // 不能多开，只保留一个实例
-  const gotTheLock = app.requestSingleInstanceLock();
-  if (!gotTheLock) {
-    app.quit();
-  } else {
-    app.on("second-instance", () => {
-      mainWindow.restore(); // 从最小化窗口恢复
-      mainWindow.show(); // 从后台显示
-    });
-  }
 
   // 注册协议，可以通过协议唤醒 myapp:// 打开应用
   app.setAsDefaultProtocolClient("myapp");
