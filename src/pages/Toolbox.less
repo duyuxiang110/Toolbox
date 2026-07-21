@@ -1,0 +1,96 @@
+// ===== 工具箱样式 =====
+@import '../styles/variables.less';
+
+.toolbox {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.toolbox-intro {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 24px;
+  background: @bg-card;
+  border: 1px solid @border-light;
+  border-radius: 16px;
+
+  h3 {
+    margin: 0 0 4px;
+    font-size: 18px;
+    font-weight: 700;
+    color: @text-primary;
+  }
+
+  p {
+    margin: 0;
+    font-size: 13px;
+    color: @text-muted;
+  }
+}
+
+.toolbox-intro-icon {
+  width: 52px;
+  height: 52px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 14px;
+  .gradient-primary();
+  color: #fff;
+  font-size: 24px;
+}
+
+.toolbox-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.toolbox-card {
+  .ant-card-body {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 20px;
+  }
+
+  &.disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+}
+
+.toolbox-card-icon {
+  width: 52px;
+  height: 52px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 14px;
+  font-size: 24px;
+}
+
+.toolbox-card-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.toolbox-card-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  color: @text-primary;
+  margin-bottom: 4px;
+}
+
+.toolbox-card-desc {
+  font-size: 13px;
+  color: @text-muted;
+  line-height: 1.5;
+}

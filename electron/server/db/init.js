@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS users (
   avatar VARCHAR(500) DEFAULT NULL,
   phone VARCHAR(20) DEFAULT NULL,
   role ENUM('admin', 'user', 'guest') DEFAULT 'user',
-  status ENUM('active', 'inactive', 'locked') DEFAULT 'active',
+  status ENUM('active', 'inactive', 'locked', 'pending') DEFAULT 'active',
   login_attempts INT DEFAULT 0,
   locked_until DATETIME DEFAULT NULL,
   last_login_at DATETIME DEFAULT NULL,
@@ -115,6 +115,11 @@ INSERT IGNORE INTO role_permissions (role, permission_id)
 SELECT 'guest', id FROM permissions WHERE code IN ('basic:access');
 `;
 
+// 表结构迁移（幂等）：为已有数据库补充 pending 状态（注册待审核）
+const MIGRATIONS_SQL = `
+ALTER TABLE users MODIFY status ENUM('active', 'inactive', 'locked', 'pending') DEFAULT 'active';
+`;
+
 /**
  * 执行数据库初始化
  */
@@ -124,6 +129,14 @@ async function initDatabase() {
   // 逐条执行建表语句
   const statements = TABLES_SQL.split(';').filter(s => s.trim());
   for (const stmt of statements) {
+    if (stmt.trim()) {
+      await query(stmt.trim());
+    }
+  }
+
+  // 执行表结构迁移（幂等，可重复执行）
+  const migrations = MIGRATIONS_SQL.split(';').filter(s => s.trim());
+  for (const stmt of migrations) {
     if (stmt.trim()) {
       await query(stmt.trim());
     }

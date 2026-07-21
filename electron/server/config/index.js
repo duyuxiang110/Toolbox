@@ -11,9 +11,9 @@ module.exports = {
     password: 'Abc3622490', // 请修改为你的MySQL密码
     database: 'sso_system',
     waitForConnections: true,
-    connectionLimit: 10,
+    connectionLimit: 5,
     queueLimit: 0,
-    connectTimeout: 10000,
+    connectTimeout: 5000,
   },
 
   // JWT 配置

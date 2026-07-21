@@ -1,9 +1,12 @@
 import { useState } from "react";
+import { ConfigProvider, App as AntdApp } from "antd";
+import zhCN from "antd/locale/zh_CN";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import LoginPage from "./components/auth/LoginPage";
 import RegisterPage from "./components/auth/RegisterPage";
 import Dashboard from "./pages/Dashboard";
-import "./App.css";
+import { ssoTheme } from "./theme/antdTheme";
+import "./App.less";
 
 function AppContent() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -31,9 +34,13 @@ function AppContent() {
 
 function App() {
   return (
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
+    <ConfigProvider theme={ssoTheme} locale={zhCN}>
+      <AntdApp>
+        <AuthProvider>
+          <AppContent />
+        </AuthProvider>
+      </AntdApp>
+    </ConfigProvider>
   );
 }
 

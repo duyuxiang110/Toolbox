@@ -24,10 +24,10 @@ class AuthService {
     // 加密密码
     const passwordHash = await bcrypt.hash(password, config.security.bcryptRounds);
 
-    // 创建用户
+    // 创建用户（需管理员审核通过后方可登录）
     const result = await query(
       `INSERT INTO users (username, email, password_hash, phone, role, status)
-       VALUES (?, ?, ?, ?, 'user', 'active')`,
+       VALUES (?, ?, ?, ?, 'user', 'pending')`,
       [username, email, passwordHash, phone || null]
     );
 
@@ -58,7 +58,14 @@ class AuthService {
 
     // 检查账户状态
     if (user.status === 'inactive') {
-      throw { status: 403, message: '账户已被禁用，请联系管理员' };
+      await this._logLogin(user.id, username, ipAddress, deviceInfo, 'login_failed', '账户已被限制登录');
+      throw { status: 403, message: '您的账户已被限制登录，请联系管理员' };
+    }
+
+    // 检查是否待管理员审核
+    if (user.status === 'pending') {
+      await this._logLogin(user.id, username, ipAddress, deviceInfo, 'login_failed', '账户待管理员审核');
+      throw { status: 403, message: '您的账户正在等待管理员审核，请耐心等待' };
     }
 
     // 检查是否被锁定
@@ -220,6 +227,37 @@ class AuthService {
     await this._logLogin(userId, user.username, null, null, 'password_change', '密码已修改');
 
     return { message: '密码修改成功，请重新登录' };
+  }
+
+  /**
+   * 忘记密码自助重置（用户名 + 邮箱双重校验）
+   */
+  async forgotPassword({ username, email, newPassword, ipAddress }) {
+    const users = await query('SELECT * FROM users WHERE username = ? AND email = ?', [username, email]);
+    if (users.length === 0) {
+      throw { status: 404, message: '用户名与邮箱不匹配，请核对后重试' };
+    }
+
+    const user = users[0];
+    if (user.status === 'inactive') {
+      throw { status: 403, message: '账户已被限制登录，请联系管理员' };
+    }
+
+    const newHash = await bcrypt.hash(newPassword, config.security.bcryptRounds);
+    // 锁定账户重置后自动解锁；待审核账户保持待审核
+    const newStatus = user.status === 'locked' ? 'active' : user.status;
+    await query(
+      'UPDATE users SET password_hash = ?, login_attempts = 0, locked_until = NULL, status = ? WHERE id = ?',
+      [newHash, newStatus, user.id]
+    );
+
+    // 使现有 token / 会话失效
+    await query('DELETE FROM refresh_tokens WHERE user_id = ?', [user.id]);
+    await query('UPDATE sessions SET is_active = 0 WHERE user_id = ?', [user.id]);
+
+    await this._logLogin(user.id, username, ipAddress || null, null, 'password_change', '忘记密码自助重置');
+
+    return { message: '密码重置成功，请使用新密码登录' };
   }
 
   /**

@@ -1,0 +1,294 @@
+// ===== 图片处理工具样式 =====
+@import '../../styles/variables.less';
+
+.imgproc {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.imgproc-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.imgproc-toolbar-right {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.imgproc-body {
+  display: flex;
+  gap: 18px;
+  align-items: stretch;
+
+  @media (max-width: 960px) {
+    flex-direction: column;
+  }
+}
+
+// ===== 左侧图片列表 =====
+.imgproc-sidebar {
+  width: 400px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  background: @bg-card;
+  border: 1px solid @border-light;
+  border-radius: 16px;
+
+  @media (max-width: 960px) {
+    width: 100%;
+  }
+}
+
+.imgproc-sidebar-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: @text-primary;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.imgproc-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 11px;
+  .gradient-primary();
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.imgproc-uploader {
+  flex: 1;
+  display: flex !important;
+  align-items: center;
+
+  .ant-upload-drag-icon {
+    font-size: 36px;
+    color: @primary;
+  }
+}
+
+.imgproc-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: auto;
+  max-height: 560px;
+  padding-right: 2px;
+}
+
+.imgproc-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  border-radius: @radius-md;
+  border: 1px solid transparent;
+  background: fade(#fff, 3%);
+  cursor: pointer;
+  transition: all 0.2s @ease-out;
+
+  &:hover {
+    background: fade(#fff, 6%);
+  }
+
+  &.active {
+    border-color: fade(@primary, 45%);
+    background: fade(@primary, 10%);
+    box-shadow: 0 0 0 3px fade(@primary, 12%);
+  }
+}
+
+.imgproc-item-thumb {
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+  object-fit: cover;
+  border-radius: @radius-sm;
+  border: 1px solid @border-light;
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.imgproc-item-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.imgproc-item-name {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: @text-body;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.imgproc-item-meta {
+  font-size: 11px;
+  color: @text-muted;
+}
+
+.imgproc-item-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+// ===== 右侧操作区 =====
+.imgproc-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 16px 20px 20px;
+  background: @bg-card;
+  border: 1px solid @border-light;
+  border-radius: 16px;
+}
+
+.imgproc-workarea {
+  display: flex;
+  gap: 20px;
+  align-items: stretch;
+
+  @media (max-width: 860px) {
+    flex-direction: column;
+  }
+}
+
+.imgproc-panel {
+  width: 520px;
+  flex-shrink: 0;
+
+  @media (max-width: 860px) {
+    width: 100%;
+  }
+}
+
+.imgproc-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 18px;
+  border-radius: @radius-md;
+  border: 1px solid @border-light;
+  background: fade(#fff, 2%);
+}
+
+.ctrl-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.ctrl-label {
+  width: 64px;
+  flex-shrink: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: @text-secondary;
+}
+
+.ctrl-x {
+  color: @text-muted;
+  font-size: 14px;
+}
+
+.ctrl-val {
+  width: 44px;
+  text-align: right;
+  font-size: 13px;
+  font-weight: 700;
+  color: @primary-light;
+}
+
+.ctrl-hint {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: @text-muted;
+}
+
+.ctrl-hint-inline {
+  font-size: 12px;
+  color: @text-muted;
+}
+
+.ctrl-rotate-btns {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+
+  .ant-btn {
+    flex: 1;
+    min-width: 90px;
+  }
+}
+
+// ===== 预览区 =====
+.imgproc-preview {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: @radius-md;
+  border: 1px dashed @border-light;
+  background: rgba(0, 0, 0, 0.18);
+  overflow: hidden;
+  min-height: 380px;
+}
+
+.imgproc-preview-empty {
+  margin: 0;
+}
+
+.imgproc-preview-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 20px;
+  width: 100%;
+}
+
+.imgproc-preview-img {
+  max-width: 100%;
+  max-height: 340px;
+  object-fit: contain;
+  border-radius: @radius-sm;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+.imgproc-preview-meta {
+  font-size: 12.5px;
+  color: @text-secondary;
+}
+
+.imgproc-preview-delta {
+  color: @success-light;
+}
+
+// ===== 裁剪容器（react-easy-crop 需要定位父级） =====
+.imgproc-cropbox {
+  position: relative;
+  width: 100%;
+  height: 400px;
+}

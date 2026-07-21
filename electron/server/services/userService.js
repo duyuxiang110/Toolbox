@@ -82,10 +82,10 @@ class UserService {
   }
 
   /**
-   * 删除用户
+   * 删除用户（级联删除所有关联数据）
    */
   async deleteUser(userId) {
-    const users = await query('SELECT id, role FROM users WHERE id = ?', [userId]);
+    const users = await query('SELECT id, username, role FROM users WHERE id = ?', [userId]);
     if (users.length === 0) {
       throw { status: 404, message: '用户不存在' };
     }
@@ -93,8 +93,13 @@ class UserService {
       throw { status: 403, message: '不能删除管理员账户' };
     }
 
+    // 级联删除关联数据
+    await query('DELETE FROM refresh_tokens WHERE user_id = ?', [userId]);
+    await query('DELETE FROM sessions WHERE user_id = ?', [userId]);
+    await query('DELETE FROM login_logs WHERE user_id = ?', [userId]);
     await query('DELETE FROM users WHERE id = ?', [userId]);
-    return { message: '用户已删除' };
+
+    return { message: `用户 ${users[0].username} 及其所有关联数据已删除` };
   }
 
   /**
@@ -106,6 +111,60 @@ class UserService {
       ['active', userId]
     );
     return { message: '用户已解锁' };
+  }
+
+  /**
+   * 限制登录（设为禁用状态，登录时提示异常）
+   */
+  async restrictUser(userId) {
+    const users = await query('SELECT id, username, role FROM users WHERE id = ?', [userId]);
+    if (users.length === 0) {
+      throw { status: 404, message: '用户不存在' };
+    }
+    if (users[0].role === 'admin') {
+      throw { status: 403, message: '不能限制管理员账户' };
+    }
+
+    await query('UPDATE users SET status = ? WHERE id = ?', ['inactive', userId]);
+    // 使其现有会话/token 失效，强制下线
+    await query('DELETE FROM refresh_tokens WHERE user_id = ?', [userId]);
+    await query('UPDATE sessions SET is_active = 0 WHERE user_id = ?', [userId]);
+
+    return { message: `用户 ${users[0].username} 已被限制登录` };
+  }
+
+  /**
+   * 解除限制（恢复正常状态）
+   */
+  async unrestrictUser(userId) {
+    const users = await query('SELECT id, username FROM users WHERE id = ?', [userId]);
+    if (users.length === 0) {
+      throw { status: 404, message: '用户不存在' };
+    }
+
+    await query(
+      'UPDATE users SET status = ?, login_attempts = 0, locked_until = NULL WHERE id = ?',
+      ['active', userId]
+    );
+
+    return { message: `用户 ${users[0].username} 已解除限制` };
+  }
+
+  /**
+   * 审核通过注册用户（pending → active）
+   */
+  async approveUser(userId) {
+    const users = await query('SELECT id, username, status FROM users WHERE id = ?', [userId]);
+    if (users.length === 0) {
+      throw { status: 404, message: '用户不存在' };
+    }
+    if (users[0].status !== 'pending') {
+      throw { status: 400, message: '该账户无需审核' };
+    }
+
+    await query('UPDATE users SET status = ? WHERE id = ?', ['active', userId]);
+
+    return { message: `用户 ${users[0].username} 已通过审核，可以登录了` };
   }
 
   /**

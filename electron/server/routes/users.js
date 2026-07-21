@@ -145,13 +145,50 @@ router.post('/:id/unlock', requireRole('admin'), async (req, res, next) => {
 });
 
 /**
+ * POST /api/users/:id/restrict - 限制登录（管理员）
+ */
+router.post('/:id/restrict', requireRole('admin'), async (req, res, next) => {
+  try {
+    const result = await userService.restrictUser(parseInt(req.params.id));
+    res.json({ success: true, data: result });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * POST /api/users/:id/unrestrict - 解除限制（管理员）
+ */
+router.post('/:id/unrestrict', requireRole('admin'), async (req, res, next) => {
+  try {
+    const result = await userService.unrestrictUser(parseInt(req.params.id));
+    res.json({ success: true, data: result });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * POST /api/users/:id/approve - 审核通过注册用户（管理员）
+ */
+router.post('/:id/approve', requireRole('admin'), async (req, res, next) => {
+  try {
+    const result = await userService.approveUser(parseInt(req.params.id));
+    res.json({ success: true, data: result });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
  * POST /api/users/:id/reset-password - 重置密码（管理员）
  */
 router.post('/:id/reset-password', requireRole('admin'), async (req, res, next) => {
   try {
     const { newPassword } = req.body;
-    if (!newPassword || newPassword.length < 6) {
-      return res.status(400).json({ success: false, message: '新密码长度至少6位' });
+    // 密码必须为 MD5 加密后的 32 位哈希
+    if (!newPassword || !/^[a-f0-9]{32}$/i.test(newPassword)) {
+      return res.status(400).json({ success: false, message: '密码格式无效，请使用客户端加密后重试' });
     }
     const result = await userService.resetPassword(parseInt(req.params.id), newPassword);
     res.json({ success: true, data: result });

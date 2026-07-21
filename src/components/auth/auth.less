@@ -1,0 +1,661 @@
+// ===== SSO 认证页面样式 =====
+@import '../../styles/variables.less';
+
+.auth-container {
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, @bg-deep 0%, #1a1a3e 40%, #24243e 100%);
+  overflow: hidden;
+}
+
+// 粒子画布
+.particle-bg {
+  z-index: 1;
+}
+
+// 光晕装饰
+.auth-glow {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.4;
+  z-index: 0;
+  animation: glowFloat 8s ease-in-out infinite;
+}
+
+.auth-glow-1 {
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle, fade(@primary, 30%), transparent);
+  top: -100px;
+  right: -100px;
+  animation-delay: 0s;
+}
+
+.auth-glow-2 {
+  width: 350px;
+  height: 350px;
+  background: radial-gradient(circle, fade(@violet, 25%), transparent);
+  bottom: -80px;
+  left: -80px;
+  animation-delay: -3s;
+}
+
+.auth-glow-3 {
+  width: 250px;
+  height: 250px;
+  background: radial-gradient(circle, fade(@blue, 20%), transparent);
+  top: 50%;
+  left: 60%;
+  animation-delay: -5s;
+}
+
+@keyframes glowFloat {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(20px, -20px) scale(1.05); }
+  66% { transform: translate(-15px, 15px) scale(0.95); }
+}
+
+// 登录卡片 - 毛玻璃效果
+.auth-card {
+  position: relative;
+  z-index: 10;
+  width: 420px;
+  max-width: 90vw;
+  padding: 48px 40px 36px;
+  background: @bg-card;
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  border: 1px solid @border-light;
+  border-radius: @radius-xl;
+  box-shadow:
+    0 32px 64px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 @border-faint;
+  animation: cardEnter 0.6s @ease-out forwards;
+  opacity: 0;
+  transform: translateY(20px);
+
+  // 抖动动画
+  &.shake {
+    animation: shake 0.6s cubic-bezier(0.36, 0.07, 0.19, 0.97);
+  }
+
+  // 注册卡片加宽
+  &.register-card {
+    width: 460px;
+  }
+}
+
+@keyframes cardEnter {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-4px); }
+  20%, 40%, 60%, 80% { transform: translateX(4px); }
+}
+
+// 头部
+.auth-header {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.auth-logo {
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 16px;
+  animation: logoPulse 3s ease-in-out infinite;
+
+  svg {
+    width: 100%;
+    height: 100%;
+    filter: drop-shadow(0 4px 12px fade(@primary, 40%));
+  }
+}
+
+@keyframes logoPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+.auth-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: @text-primary;
+  margin: 0 0 6px;
+  letter-spacing: 1px;
+}
+
+.auth-subtitle {
+  font-size: 12px;
+  color: @text-muted;
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+// 错误提示
+.auth-error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  margin-bottom: 20px;
+  background: fade(@danger, 10%);
+  border: 1px solid fade(@danger, 20%);
+  border-radius: @radius-md;
+  color: @danger-light;
+  font-size: 13px;
+  animation: errorSlide 0.3s ease;
+}
+
+@keyframes errorSlide {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+// 表单
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.form-group {
+  position: relative;
+  display: flex;
+  align-items: center;
+
+  label {
+    position: absolute;
+    left: 16px;
+    color: rgba(255, 255, 255, 0.35);
+    display: flex;
+    align-items: center;
+    transition: color 0.3s;
+    pointer-events: none;
+  }
+
+  input {
+    width: 100%;
+    padding: 15px 48px 15px 48px;
+    background: @bg-input;
+    border: 1px solid @border-input;
+    border-radius: @radius-lg;
+    color: @text-primary;
+    font-size: 14px;
+    outline: none;
+    transition: all 0.3s @ease-smooth;
+
+    &::placeholder {
+      color: @text-faint;
+    }
+
+    &:focus {
+      border-color: fade(@primary, 60%);
+      background: fade(@primary, 5%);
+      box-shadow: 0 0 0 4px fade(@primary, 10%);
+    }
+
+    &:focus + .toggle-password,
+    &:focus ~ label {
+      color: fade(@primary, 80%);
+    }
+  }
+
+  &:has(input:focus) label {
+    color: fade(@primary, 80%);
+  }
+}
+
+// 密码切换按钮
+.toggle-password {
+  position: absolute;
+  right: 14px;
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.35);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  transition: color 0.3s;
+
+  &:hover {
+    color: rgba(255, 255, 255, 0.7);
+  }
+}
+
+// 选项行
+.form-options {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: -4px;
+}
+
+.checkbox-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  color: @text-secondary;
+  user-select: none;
+
+  input[type="checkbox"] {
+    display: none;
+  }
+
+  input:checked + .checkmark {
+    background: @primary;
+    border-color: @primary;
+
+    &::after {
+      content: '';
+      position: absolute;
+      left: 5px;
+      top: 2px;
+      width: 4px;
+      height: 8px;
+      border: solid white;
+      border-width: 0 2px 2px 0;
+      transform: rotate(45deg);
+    }
+  }
+}
+
+.checkmark {
+  width: 16px;
+  height: 16px;
+  border: 1.5px solid rgba(255, 255, 255, 0.2);
+  border-radius: 5px;
+  transition: all 0.2s;
+  position: relative;
+}
+
+.forgot-link {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-size: 13px;
+  color: fade(@violet, 80%);
+  text-decoration: none;
+  transition: color 0.3s;
+
+  &:hover {
+    color: @violet-light;
+  }
+}
+
+// ===== 忘记密码弹窗 =====
+.forgot-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(10, 8, 30, 0.7);
+  backdrop-filter: blur(8px);
+  animation: forgot-fade 0.25s @ease-out;
+}
+
+.forgot-modal {
+  position: relative;
+  width: 100%;
+  max-width: 400px;
+  padding: 40px 36px 32px;
+  border-radius: 20px;
+  border: 1px solid fade(#fff, 10%);
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03));
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
+  text-align: center;
+  animation: forgot-pop 0.3s @ease-out;
+}
+
+.forgot-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: @text-secondary;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover {
+    background: fade(#fff, 8%);
+    color: @text-primary;
+  }
+}
+
+.forgot-icon {
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 16px;
+  .gradient-primary();
+  color: #fff;
+  box-shadow: 0 8px 24px fade(@primary, 35%);
+}
+
+.forgot-title {
+  margin: 0 0 10px;
+  font-size: 20px;
+  font-weight: 700;
+  color: @text-primary;
+}
+
+.forgot-desc {
+  margin: 0 0 22px;
+  font-size: 13px;
+  line-height: 1.7;
+  color: @text-secondary;
+}
+
+// 成功态图标：绿色渐变
+.forgot-icon-success {
+  background: linear-gradient(135deg, #10b981, #34d399);
+  box-shadow: 0 8px 24px fade(#10b981, 35%);
+  animation: forgot-success-pop 0.45s @ease-out;
+}
+
+// 步骤指示器
+.forgot-stepbar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  margin: 0 auto 20px;
+  width: 120px;
+
+  .stepbar-dot {
+    width: 26px;
+    height: 26px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    border: 1.5px solid fade(#fff, 18%);
+    background: fade(#fff, 4%);
+    color: @text-secondary;
+    font-size: 12px;
+    font-weight: 700;
+    transition: all 0.35s @ease-smooth;
+
+    &.on {
+      .gradient-primary();
+      border-color: transparent;
+      color: #fff;
+      box-shadow: 0 4px 14px fade(@primary, 40%);
+    }
+  }
+
+  .stepbar-line {
+    flex: 1;
+    height: 2px;
+    margin: 0 8px;
+    border-radius: 1px;
+    background: fade(#fff, 12%);
+    transition: background 0.35s @ease-smooth;
+
+    &.on {
+      background: linear-gradient(90deg, @primary, @violet);
+    }
+  }
+}
+
+// 错误提示
+.forgot-error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-bottom: 14px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  border: 1px solid fade(@danger, 30%);
+  background: fade(@danger, 10%);
+  color: #fca5a5;
+  font-size: 12.5px;
+  animation: forgot-fade 0.25s @ease-out;
+}
+
+// 输入区
+.forgot-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+
+  input {
+    width: 100%;
+    padding: 13px 16px;
+    background: @bg-input;
+    border: 1px solid @border-input;
+    border-radius: @radius-lg;
+    color: @text-primary;
+    font-size: 14px;
+    outline: none;
+    transition: all 0.3s @ease-smooth;
+
+    &::placeholder {
+      color: @text-faint;
+    }
+
+    &:focus {
+      border-color: @primary;
+      box-shadow: 0 0 0 3px fade(@primary, 18%);
+      background: fade(@primary, 5%);
+    }
+  }
+
+  .auth-btn {
+    margin-top: 4px;
+  }
+}
+
+// 上一步 / 重置 按钮行
+.forgot-btnrow {
+  display: flex;
+  gap: 10px;
+
+  .forgot-back {
+    flex-shrink: 0;
+    padding: 13px 18px;
+    border: 1px solid fade(#fff, 14%);
+    border-radius: @radius-lg;
+    background: fade(#fff, 4%);
+    color: @text-body;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.25s @ease-out;
+
+    &:hover:not(:disabled) {
+      background: fade(#fff, 9%);
+      border-color: fade(#fff, 24%);
+      color: @text-primary;
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+
+  .auth-btn {
+    flex: 1;
+  }
+}
+
+@keyframes forgot-success-pop {
+  0% { transform: scale(0.4); opacity: 0; }
+  60% { transform: scale(1.12); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.forgot-confirm {
+  width: 100%;
+}
+
+@keyframes forgot-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes forgot-pop {
+  from { opacity: 0; transform: translateY(16px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+// 登录按钮
+.auth-btn {
+  position: relative;
+  width: 100%;
+  padding: 15px;
+  margin-top: 8px;
+  .gradient-primary();
+  border: none;
+  border-radius: @radius-lg;
+  color: white;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.3s @ease-smooth;
+  overflow: hidden;
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, @primary-light, @violet-light);
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  &:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 32px fade(@primary, 40%);
+
+    &::before {
+      opacity: 1;
+    }
+  }
+
+  &:active:not(:disabled) {
+    transform: translateY(0);
+  }
+
+  span, svg {
+    position: relative;
+    z-index: 1;
+  }
+
+  &:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+  }
+}
+
+// 加载动画
+.spinner {
+  width: 20px;
+  height: 20px;
+  border: 2.5px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+// 底部切换
+.auth-footer {
+  text-align: center;
+  margin-top: 24px;
+  font-size: 13px;
+  color: @text-muted;
+}
+
+.switch-btn {
+  background: none;
+  border: none;
+  color: @primary-light;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0 4px;
+  transition: color 0.3s;
+
+  &:hover {
+    color: @violet-light;
+    text-decoration: underline;
+  }
+}
+
+// ===== 注册页面额外样式 =====
+.password-strength {
+  display: flex;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.strength-bar {
+  height: 3px;
+  flex: 1;
+  border-radius: 2px;
+  background: @border-input;
+  transition: background 0.3s;
+
+  &.weak { background: @danger; }
+  &.medium { background: @warning; }
+  &.strong { background: @success; }
+}
+
+.strength-text {
+  font-size: 11px;
+  margin-top: 4px;
+  color: @text-muted;
+}
+
+// 成功提示
+.auth-success {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  margin-bottom: 20px;
+  background: fade(@success, 10%);
+  border: 1px solid fade(@success, 20%);
+  border-radius: @radius-md;
+  color: @success-light;
+  font-size: 13px;
+  animation: errorSlide 0.3s ease;
+}

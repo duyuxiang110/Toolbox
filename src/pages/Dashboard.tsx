@@ -5,7 +5,8 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../api/client';
-import './Dashboard.css';
+import Toolbox from './Toolbox';
+import './Dashboard.less';
 
 interface Stats {
   totalUsers: number;
@@ -27,16 +28,20 @@ interface LogEntry {
 
 export default function Dashboard() {
   const { user, logout } = useAuth();
-  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'logs' | 'profile'>('overview');
+  const isAdmin = user?.role === 'admin';
+  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'logs' | 'toolbox' | 'profile'>(isAdmin ? 'overview' : 'toolbox');
   const [stats, setStats] = useState<Stats | null>(null);
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
 
   useEffect(() => {
-    loadStats();
-    loadLogs();
-    if (user?.role === 'admin') loadUsers();
+    if (isAdmin) {
+      loadStats();
+      loadLogs();
+      loadUsers();
+    }
   }, []);
 
   const loadStats = async () => {
@@ -52,6 +57,39 @@ export default function Dashboard() {
   const loadUsers = async () => {
     const res = await api.get<{ users: any[] }>('/users?pageSize=50');
     if (res.success && res.data) setUsers(res.data.users);
+  };
+
+  const handleDeleteUser = async (userId: number) => {
+    const res = await api.delete(`/users/${userId}`);
+    if (res.success) {
+      setUsers(prev => prev.filter(u => u.id !== userId));
+    } else {
+      alert(res.message || '删除失败');
+    }
+    setDeleteConfirm(null);
+  };
+
+  const handleToggleRestrict = async (u: any) => {
+    const isRestricted = u.status === 'inactive';
+    const res = await api.post(`/users/${u.id}/${isRestricted ? 'unrestrict' : 'restrict'}`);
+    if (res.success) {
+      setUsers(prev => prev.map(item =>
+        item.id === u.id ? { ...item, status: isRestricted ? 'active' : 'inactive' } : item
+      ));
+    } else {
+      alert(res.message || '操作失败');
+    }
+  };
+
+  const handleApproveUser = async (u: any) => {
+    const res = await api.post(`/users/${u.id}/approve`);
+    if (res.success) {
+      setUsers(prev => prev.map(item =>
+        item.id === u.id ? { ...item, status: 'active' } : item
+      ));
+    } else {
+      alert(res.message || '审核失败');
+    }
   };
 
   const handleLogout = async () => {
@@ -87,14 +125,16 @@ export default function Dashboard() {
         </div>
 
         <nav className="sidebar-nav">
-          <button className={activeTab === 'overview' ? 'active' : ''} onClick={() => setActiveTab('overview')}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" />
-              <rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" />
-            </svg>
-            概览
-          </button>
-          {user?.role === 'admin' && (
+          {isAdmin && (
+            <button className={activeTab === 'overview' ? 'active' : ''} onClick={() => setActiveTab('overview')}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" />
+                <rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" />
+              </svg>
+              概览
+            </button>
+          )}
+          {isAdmin && (
             <button className={activeTab === 'users' ? 'active' : ''} onClick={() => setActiveTab('users')}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" /><circle cx="9" cy="7" r="4" />
@@ -103,12 +143,20 @@ export default function Dashboard() {
               用户管理
             </button>
           )}
-          <button className={activeTab === 'logs' ? 'active' : ''} onClick={() => setActiveTab('logs')}>
+          {isAdmin && (
+            <button className={activeTab === 'logs' ? 'active' : ''} onClick={() => setActiveTab('logs')}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+                <polyline points="14,2 14,8 20,8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" />
+              </svg>
+              登录日志
+            </button>
+          )}
+          <button className={activeTab === 'toolbox' ? 'active' : ''} onClick={() => setActiveTab('toolbox')}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
-              <polyline points="14,2 14,8 20,8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" />
+              <path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z" />
             </svg>
-            登录日志
+            工具箱
           </button>
           <button className={activeTab === 'profile' ? 'active' : ''} onClick={() => setActiveTab('profile')}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -138,7 +186,7 @@ export default function Dashboard() {
       {/* 主内容区 */}
       <main className="main-content">
         <header className="content-header">
-          <h2>{activeTab === 'overview' ? '系统概览' : activeTab === 'users' ? '用户管理' : activeTab === 'logs' ? '登录日志' : '个人中心'}</h2>
+          <h2>{activeTab === 'overview' ? '系统概览' : activeTab === 'users' ? '用户管理' : activeTab === 'logs' ? '登录日志' : activeTab === 'toolbox' ? '工具箱' : '个人中心'}</h2>
           <div className="header-time">{new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' })}</div>
         </header>
 
@@ -204,13 +252,13 @@ export default function Dashboard() {
         )}
 
         {/* 用户管理 */}
-        {activeTab === 'users' && user?.role === 'admin' && (
+        {activeTab === 'users' && isAdmin && (
           <div className="users-content">
             <div className="table-wrapper">
               <table className="data-table">
                 <thead>
                   <tr>
-                    <th>ID</th><th>用户名</th><th>邮箱</th><th>角色</th><th>状态</th><th>最后登录</th>
+                    <th>ID</th><th>用户名</th><th>邮箱</th><th>角色</th><th>状态</th><th>最后登录</th><th>操作</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -223,8 +271,53 @@ export default function Dashboard() {
                       </td>
                       <td>{u.email}</td>
                       <td><span className={`badge badge-${u.role}`}>{roleLabels[u.role]}</span></td>
-                      <td><span className={`status-dot status-${u.status}`} />{u.status === 'active' ? '正常' : u.status === 'locked' ? '锁定' : '禁用'}</td>
+                      <td><span className={`status-dot status-${u.status}`} />{u.status === 'active' ? '正常' : u.status === 'locked' ? '锁定' : u.status === 'pending' ? '待审核' : '已限制'}</td>
                       <td>{u.last_login_at || '从未'}</td>
+                      <td>
+                        {u.role !== 'admin' && (
+                          <div className="td-actions">
+                            {u.status === 'pending' && (
+                              <button
+                                className="btn-approve"
+                                onClick={() => handleApproveUser(u)}
+                                title="审核通过"
+                              >
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                  <polyline points="20,6 9,17 4,12" />
+                                </svg>
+                                <span>通过</span>
+                              </button>
+                            )}
+                            <button
+                              className={`btn-restrict ${u.status === 'inactive' ? 'is-restricted' : ''}`}
+                              onClick={() => handleToggleRestrict(u)}
+                              title={u.status === 'inactive' ? '解除限制' : '限制登录'}
+                            >
+                              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                {u.status === 'inactive' ? (
+                                  <><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0110 0v4" /></>
+                                ) : (
+                                  <><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 019.9-1" /></>
+                                )}
+                              </svg>
+                              <span>{u.status === 'inactive' ? '解除' : '限制'}</span>
+                            </button>
+                            {deleteConfirm === u.id ? (
+                              <span className="delete-confirm">
+                                <button className="btn-confirm-yes" onClick={() => handleDeleteUser(u.id)}>确认</button>
+                                <button className="btn-confirm-no" onClick={() => setDeleteConfirm(null)}>取消</button>
+                              </span>
+                            ) : (
+                              <button className="btn-delete" onClick={() => setDeleteConfirm(u.id)} title="删除用户">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                  <polyline points="3,6 5,6 21,6" /><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
+                                  <line x1="10" y1="11" x2="10" y2="17" /><line x1="14" y1="11" x2="14" y2="17" />
+                                </svg>
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -258,6 +351,9 @@ export default function Dashboard() {
             </div>
           </div>
         )}
+
+        {/* 工具箱 */}
+        {activeTab === 'toolbox' && <Toolbox />}
 
         {/* 个人中心 */}
         {activeTab === 'profile' && (

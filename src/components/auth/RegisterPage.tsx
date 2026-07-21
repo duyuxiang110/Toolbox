@@ -4,7 +4,7 @@
 import { useState, type FormEvent } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import ParticleCanvas from './ParticleCanvas';
-import './auth.css';
+import './auth.less';
 
 interface RegisterPageProps {
   onSwitchToLogin: () => void;
@@ -63,8 +63,8 @@ export default function RegisterPage({ onSwitchToLogin }: RegisterPageProps) {
     setIsLoading(false);
 
     if (result.success) {
-      setSuccess('注册成功！即将跳转到登录页...');
-      setTimeout(onSwitchToLogin, 2000);
+      setSuccess('注册成功！账户需管理员审核通过后方可登录，请耐心等待');
+      setForm({ username: '', email: '', password: '', confirmPassword: '', phone: '' });
     } else {
       setError(result.message || '注册失败');
       triggerShake();

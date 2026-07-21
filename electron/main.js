@@ -78,7 +78,11 @@ app.on("window-all-closed", () => {
 
 // 应用退出前关闭服务器
 app.on('before-quit', async () => {
-  await stopServer();
+  try {
+    await stopServer();
+  } catch (e) {
+    // 忽略关闭时的错误
+  }
 });
 
 const CPU_OVERLOAD_THRESHOLD = 50; // CPU 过载阈值 %

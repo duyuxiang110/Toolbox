@@ -3,9 +3,10 @@
  * 粒子动画背景 + 毛玻璃卡片 + 流畅动效
  */
 import { useState, type FormEvent } from 'react';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth, encryptPassword } from '../../context/AuthContext';
+import { api } from '../../api/client';
 import ParticleCanvas from './ParticleCanvas';
-import './auth.css';
+import './auth.less';
 
 interface LoginPageProps {
   onSwitchToRegister: () => void;
@@ -13,14 +14,80 @@ interface LoginPageProps {
 
 export default function LoginPage({ onSwitchToRegister }: LoginPageProps) {
   const { login } = useAuth();
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+
+  // 读取记住的账号密码
+  const savedCredentials = (() => {
+    try {
+      const saved = localStorage.getItem('remembered_credentials');
+      if (saved) return JSON.parse(saved);
+    } catch { /* ignore */ }
+    return null;
+  })();
+
+  const [username, setUsername] = useState(savedCredentials?.username || '');
+  const [password, setPassword] = useState(savedCredentials?.password || '');
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(false);
+  const [rememberMe, setRememberMe] = useState(!!savedCredentials);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [shake, setShake] = useState(false);
+  const [showForgot, setShowForgot] = useState(false);
+  const [forgotStep, setForgotStep] = useState<1 | 2>(1);
+  const [forgotForm, setForgotForm] = useState({ username: '', email: '', newPassword: '', confirmPassword: '' });
+  const [forgotLoading, setForgotLoading] = useState(false);
+  const [forgotError, setForgotError] = useState('');
+  const [forgotSuccess, setForgotSuccess] = useState(false);
 
+  const openForgot = () => {
+    setShowForgot(true);
+    setForgotStep(1);
+    setForgotForm({ username: '', email: '', newPassword: '', confirmPassword: '' });
+    setForgotError('');
+    setForgotSuccess(false);
+  };
+
+  const updateForgot = (field: string, value: string) => {
+    setForgotForm(prev => ({ ...prev, [field]: value }));
+  };
+
+  // 更新忘记密码表单字段
+  const handleForgotNext = () => {
+    setForgotError('');
+    if (!forgotForm.username.trim() || !forgotForm.email.trim()) {
+      setForgotError('请填写用户名和注册邮箱');
+      return;
+    }
+    setForgotStep(2);
+  };
+
+  // 处理忘记密码下一步
+  const handleForgotSubmit = async () => {
+    setForgotError('');
+    if (!forgotForm.newPassword || forgotForm.newPassword.length < 6) {
+      setForgotError('新密码长度至少6位');
+      return;
+    }
+    if (forgotForm.newPassword !== forgotForm.confirmPassword) {
+      setForgotError('两次输入的密码不一致');
+      return;
+    }
+    setForgotLoading(true);
+    const res = await api.post('/auth/forgot-password', {
+      username: forgotForm.username.trim(),
+      email: forgotForm.email.trim(),
+      newPassword: encryptPassword(forgotForm.newPassword),
+    });
+    setForgotLoading(false);
+    if (res.success) {
+      setForgotSuccess(true);
+      setUsername(forgotForm.username.trim());
+      setTimeout(() => setShowForgot(false), 1800);
+    } else {
+      setForgotError(res.message || '重置失败，请核对信息');
+    }
+  };
+
+  // 处理登录表单提交
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError('');
@@ -35,7 +102,14 @@ export default function LoginPage({ onSwitchToRegister }: LoginPageProps) {
     const result = await login(username.trim(), password);
     setIsLoading(false);
 
-    if (!result.success) {
+    if (result.success) {
+      // 登录成功，处理记住我
+      if (rememberMe) {
+        localStorage.setItem('remembered_credentials', JSON.stringify({ username: username.trim(), password }));
+      } else {
+        localStorage.removeItem('remembered_credentials');
+      }
+    } else {
       setError(result.message || '登录失败');
       triggerShake();
     }
@@ -74,8 +148,8 @@ export default function LoginPage({ onSwitchToRegister }: LoginPageProps) {
               </defs>
             </svg>
           </div>
-          <h1 className="auth-title">SSO 统一认证中心</h1>
-          <p className="auth-subtitle">Single Sign-On Authentication</p>
+          <h1 className="auth-title">登录认证</h1>
+          <p className="auth-subtitle">Sign-On Authentication</p>
         </div>
 
         {/* 错误提示 */}
@@ -154,7 +228,7 @@ export default function LoginPage({ onSwitchToRegister }: LoginPageProps) {
               <span className="checkmark" />
               <span>记住我</span>
             </label>
-            <a href="#" className="forgot-link">忘记密码？</a>
+            <button type="button" className="forgot-link" onClick={openForgot}>忘记密码？</button>
           </div>
 
           <button type="submit" className={`auth-btn ${isLoading ? 'loading' : ''}`} disabled={isLoading}>
@@ -176,15 +250,74 @@ export default function LoginPage({ onSwitchToRegister }: LoginPageProps) {
           <span>还没有账户？</span>
           <button onClick={onSwitchToRegister} className="switch-btn">立即注册</button>
         </div>
-
-        {/* 安全提示 */}
-        <div className="auth-security">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-          </svg>
-          <span>256-bit SSL 加密传输 · 企业级安全防护</span>
-        </div>
       </div>
+
+      {/* 忘记密码弹窗 */}
+      {showForgot && (
+        <div className="forgot-overlay" onClick={() => setShowForgot(false)}>
+          <div className="forgot-modal" onClick={(e) => e.stopPropagation()}>
+            <button className="forgot-close" onClick={() => setShowForgot(false)} aria-label="关闭">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
+            {forgotSuccess ? (
+              <>
+                <div className="forgot-icon forgot-icon-success">
+                  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <polyline points="20,6 9,17 4,12" />
+                  </svg>
+                </div>
+                <h3 className="forgot-title">重置成功</h3>
+                <p className="forgot-desc">密码已重置，请使用新密码登录</p>
+              </>
+            ) : (
+              <>
+                <div className="forgot-icon">
+                  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0110 0v4" />
+                  </svg>
+                </div>
+                <h3 className="forgot-title">忘记密码？</h3>
+                <p className="forgot-desc">
+                  {forgotStep === 1
+                    ? '第一步：验证身份 — 请输入注册时的用户名与邮箱'
+                    : '第二步：设置新密码 — 重置成功后即可登录'}
+                </p>
+
+                <div className="forgot-stepbar">
+                  <span className={`stepbar-dot ${forgotStep >= 1 ? 'on' : ''}`}>1</span>
+                  <span className={`stepbar-line ${forgotStep >= 2 ? 'on' : ''}`} />
+                  <span className={`stepbar-dot ${forgotStep >= 2 ? 'on' : ''}`}>2</span>
+                </div>
+
+                {forgotError && <div className="forgot-error">{forgotError}</div>}
+
+                {forgotStep === 1 ? (
+                  <div className="forgot-fields">
+                    <input type="text" placeholder="用户名" value={forgotForm.username} onChange={(e) => updateForgot('username', e.target.value)} autoComplete="username" />
+                    <input type="email" placeholder="注册邮箱" value={forgotForm.email} onChange={(e) => updateForgot('email', e.target.value)} autoComplete="email" />
+                    <button className="auth-btn forgot-confirm" onClick={handleForgotNext}>
+                      <span>下一步</span>
+                    </button>
+                  </div>
+                ) : (
+                  <div className="forgot-fields">
+                    <input type="password" placeholder="新密码（至少6位）" value={forgotForm.newPassword} onChange={(e) => updateForgot('newPassword', e.target.value)} autoComplete="new-password" />
+                    <input type="password" placeholder="确认新密码" value={forgotForm.confirmPassword} onChange={(e) => updateForgot('confirmPassword', e.target.value)} autoComplete="new-password" />
+                    <div className="forgot-btnrow">
+                      <button type="button" className="forgot-back" onClick={() => { setForgotStep(1); setForgotError(''); }} disabled={forgotLoading}>上一步</button>
+                      <button className={`auth-btn forgot-confirm ${forgotLoading ? 'loading' : ''}`} onClick={handleForgotSubmit} disabled={forgotLoading}>
+                        {forgotLoading ? <span className="spinner" /> : <span>重置密码</span>}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
