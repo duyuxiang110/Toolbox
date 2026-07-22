@@ -10,27 +10,10 @@ import {
   InboxOutlined,
   FilePdfOutlined,
   DeleteOutlined,
-  HolderOutlined,
 } from '@ant-design/icons';
-import {
-  DndContext,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-} from '@dnd-kit/core';
-import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  rectSortingStrategy,
-  useSortable,
-} from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
 import { jsPDF } from 'jspdf';
 import moment from 'moment';
+import SortableGrid from '../../components/SortableGrid/SortableGrid';
 import './ImageToPdf.less';
 
 const { Dragger } = Upload;
@@ -54,70 +37,10 @@ interface ImageToPdfProps {
 
 let uidSeed = 0;
 
-// 可拖拽排序的图片卡片
-function SortableImageCard({
-  img,
-  index,
-  onRemove,
-}: {
-  img: ImageItem;
-  index: number;
-  onRemove: (uid: string) => void;
-}) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: img.uid });
-
-  const style: React.CSSProperties = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-  };
-
-  return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      {...attributes}
-      {...listeners}
-      className={`pdf-preview-card ${isDragging ? 'is-dragging' : ''}`}
-    >
-      <div className="pdf-preview-index">{index + 1}</div>
-      <div className="pdf-preview-grip">
-        <HolderOutlined />
-      </div>
-      <img src={img.dataUrl} alt={img.name} className="pdf-preview-img" draggable={false} />
-      <div className="pdf-preview-footer">
-        <Tooltip title={img.name}>
-          <span className="pdf-preview-name">{img.name}</span>
-        </Tooltip>
-        <Button
-          type="text"
-          size="small"
-          danger
-          icon={<DeleteOutlined />}
-          onClick={() => onRemove(img.uid)}
-          onPointerDown={(e) => e.stopPropagation()}
-        />
-      </div>
-    </div>
-  );
-}
-
 export default function ImageToPdf({ onBack }: ImageToPdfProps) {
   const { message } = App.useApp();
   const [images, setImages] = useState<ImageItem[]>([]);
   const [generating, setGenerating] = useState(false);
-
-  // 拖拽传感器：指针需移动 5px 才触发拖拽（避免误触点击）
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
-  );
 
   // 读取图片文件为 dataURL 并获取尺寸
   const readImage = (file: File): Promise<ImageItem> =>
@@ -163,18 +86,6 @@ export default function ImageToPdf({ onBack }: ImageToPdfProps) {
       message.error(`「${file.name}」读取失败`);
     }
     return Upload.LIST_IGNORE; // 阻止 antd 默认上传行为
-  };
-
-  // 拖拽结束，重排数组
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    if (over && active.id !== over.id) {
-      setImages((items) => {
-        const oldIndex = items.findIndex((i) => i.uid === active.id);
-        const newIndex = items.findIndex((i) => i.uid === over.id);
-        return arrayMove(items, oldIndex, newIndex);
-      });
-    }
   };
 
   const handleRemove = (uid: string) => {
@@ -259,15 +170,34 @@ export default function ImageToPdf({ onBack }: ImageToPdfProps) {
       {images.length === 0 ? (
         <Empty description="暂无图片，请上传" className="pdf-empty" />
       ) : (
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-          <SortableContext items={images.map((i) => i.uid)} strategy={rectSortingStrategy}>
-            <div className="pdf-preview-grid">
-              {images.map((img, index) => (
-                <SortableImageCard key={img.uid} img={img} index={index} onRemove={handleRemove} />
-              ))}
-            </div>
-          </SortableContext>
-        </DndContext>
+        <SortableGrid
+          items={images}
+          getId={(img) => img.uid}
+          onReorder={setImages}
+          renderContent={(img) => (
+            <>
+              <img
+                src={img.dataUrl}
+                alt={img.name}
+                className="pdf-preview-img"
+                draggable={false}
+              />
+              <div className="pdf-preview-footer">
+                <Tooltip title={img.name}>
+                  <span className="pdf-preview-name">{img.name}</span>
+                </Tooltip>
+                <Button
+                  type="text"
+                  size="small"
+                  danger
+                  icon={<DeleteOutlined />}
+                  onClick={() => handleRemove(img.uid)}
+                  onPointerDown={(e) => e.stopPropagation()}
+                />
+              </div>
+            </>
+          )}
+        />
       )}
     </div>
   );

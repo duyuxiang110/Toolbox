@@ -1,0 +1,92 @@
+// ===== 通用可拖拽排序网格样式 =====
+@import '../../styles/variables.less';
+
+.sortable-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 16px;
+  padding-top: 4px;
+}
+
+.sortable-card {
+  position: relative;
+  background: @bg-card;
+  border: 1px solid @border-light;
+  border-radius: @radius-md;
+  overflow: hidden;
+  cursor: grab;
+  user-select: none;
+  transition: box-shadow 0.25s @ease-smooth, border-color 0.25s @ease-smooth,
+    transform 0.2s @ease-smooth;
+
+  &:hover {
+    border-color: fade(@primary, 40%);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+
+    .sortable-card-grip {
+      opacity: 1;
+    }
+  }
+
+  &:active {
+    cursor: grabbing;
+  }
+
+  // 拖拽中的卡片
+  &.is-dragging {
+    z-index: 10;
+    border-color: @primary;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+    opacity: 0.92;
+    cursor: grabbing;
+  }
+
+  // 禁用拖拽（处理中）
+  &.is-disabled {
+    cursor: default;
+
+    &:hover {
+      border-color: @border-light;
+      box-shadow: none;
+    }
+  }
+}
+
+// 左上角序号徽标
+.sortable-card-index {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 2;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  .gradient-primary();
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+// 右上角拖拽把手提示
+.sortable-card-grip {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.55);
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 13px;
+  opacity: 0;
+  transition: opacity 0.2s @ease-smooth;
+  pointer-events: none;
+}

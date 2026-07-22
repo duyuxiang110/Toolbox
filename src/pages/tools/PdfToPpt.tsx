@@ -16,7 +16,7 @@ import PptxGenJS from 'pptxgenjs';
 import moment from 'moment';
 import { renderPdfPages, readFileAsArrayBuffer, type RenderedPage } from '../../utils/pdfRender';
 import { formatBytes } from '../../utils/imageOps';
-import SortablePageGrid from './SortablePageGrid';
+import SortableGrid from '../../components/SortableGrid/SortableGrid';
 import './convert.less';
 
 const { Dragger } = Upload;
@@ -218,7 +218,27 @@ export default function PdfToPpt({ onBack }: PdfToPptProps) {
           ) : pages.length === 0 ? (
             <Empty description="暂无可转换的页面" className="convert-empty" />
           ) : (
-            <SortablePageGrid pages={pages} onReorder={setPages} disabled={rendering} />
+            <SortableGrid
+              items={pages}
+              getId={(pg) => pg.pageNum}
+              onReorder={setPages}
+              disabled={rendering}
+              renderContent={(pg, index) => (
+                <>
+                  <div className="cc-img-wrap">
+                    <img
+                      src={pg.dataUrl}
+                      alt={`第 ${index + 1} 页`}
+                      className="cc-img"
+                      draggable={false}
+                    />
+                  </div>
+                  <div className="cc-footer">
+                    {pg.width}×{pg.height}
+                  </div>
+                </>
+              )}
+            />
           )}
         </div>
       </div>

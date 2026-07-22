@@ -1,0 +1,70 @@
+name: Build Desktop App
+
+# 触发方式：
+# 1) 推送 v 开头的 tag（如 v1.0.1）→ 自动打包并发布到 GitHub Release
+# 2) 在 Actions 页面手动点击 "Run workflow"
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write # 允许创建 Release 并上传产物
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            platform: mac
+          - os: windows-latest
+            platform: win
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: 拉取代码
+        uses: actions/checkout@v4
+
+      - name: 安装 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: 安装依赖（含对应平台的 ffmpeg 二进制）
+        run: npm ci
+
+      - name: 构建前端（Vite）
+        run: npm run build
+
+      - name: electron-builder 打包
+        # 每个 runner 各自打自己平台的包：macOS 出 dmg/zip，Windows 出 exe。
+        # 覆盖输出目录为仓库内 release/，方便上传产物。
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CSC_IDENTITY_AUTO_DISCOVERY: false # 跳过 mac 代码签名（无证书）
+        run: npx electron-builder --${{ matrix.platform }} --publish never -c.directories.output=release
+
+      - name: 上传构建产物（可在 Actions 运行页下载）
+        uses: actions/upload-artifact@v4
+        with:
+          name: lingguang-${{ matrix.platform }}
+          path: |
+            release/*.dmg
+            release/*.zip
+            release/*.exe
+          if-no-files-found: ignore
+
+      - name: 发布到 GitHub Release（仅打 tag 时）
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            release/*.dmg
+            release/*.zip
+            release/*.exe
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

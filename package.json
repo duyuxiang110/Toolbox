@@ -1,7 +1,7 @@
 {
-  "name": "electron-demo",
+  "name": "lingguang",
   "version": "1.0.0",
-  "description": "Electron + React demo app with cross-platform packaging",
+  "description": "灵光 - 跨平台实用工具箱桌面应用",
   "main": "electron/main.js",
   "scripts": {
     "dev": "vite",
@@ -15,10 +15,11 @@
     "preview": "vite preview"
   },
   "build": {
-    "appId": "com.electron.demo",
-    "productName": "ElectronDemo",
+    "appId": "com.lingguang.app",
+    "productName": "灵光",
+    "artifactName": "LingGuang-${version}-${arch}.${ext}",
     "directories": {
-      "output": "release"
+      "output": "../LingGuang-release"
     },
     "files": [
       "dist/**/*",
@@ -29,6 +30,17 @@
     "asarUnpack": [
       "node_modules/ffmpeg-static/**",
       "node_modules/ffprobe-static/**"
+    ],
+    "extraResources": [
+      {
+        "from": "build",
+        "to": "build",
+        "filter": [
+          "icon.png",
+          "tray.png",
+          "tray@2x.png"
+        ]
+      }
     ],
     "win": {
       "target": [
@@ -45,7 +57,7 @@
           ]
         }
       ],
-      "icon": "public/icon.png"
+      "icon": "build/icon.png"
     },
     "mac": {
       "target": [
@@ -64,7 +76,8 @@
           ]
         }
       ],
-      "icon": "public/icon.png"
+      "icon": "build/icon.icns",
+      "category": "public.app-category.productivity"
     },
     "nsis": {
       "oneClick": false,
@@ -73,7 +86,7 @@
       "createStartMenuShortcut": true
     },
     "portable": {
-      "unpackDirName": "ElectronDemo"
+      "unpackDirName": "LingGuang"
     },
     "electronDist": "./node_modules/electron/dist"
   },

@@ -151,3 +151,6 @@ gen-multipage.js
 test-*.docx
 test-*.mp4
 ocr-*.png
+
+# macOS 系统文件
+.DS_Store

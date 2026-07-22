@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, Notification } = require("electron");
+const { app, BrowserWindow, ipcMain, Notification, Tray, Menu, nativeImage } = require("electron");
 const path = require("path");
 const si = require("systeminformation");
 const { startServer, stopServer } = require("./server");
@@ -6,6 +6,15 @@ const { startServer, stopServer } = require("./server");
 const isDev = !app.isPackaged;
 
 let mainWindow;
+let tray = null;
+
+// 解析随包资源路径：开发环境取项目 build/，打包后取 resources/build/
+function getAssetPath(...paths) {
+  const base = app.isPackaged
+    ? path.join(process.resourcesPath, "build")
+    : path.join(__dirname, "..", "build");
+  return path.join(base, ...paths);
+}
 
 // 单实例锁：必须在 whenReady 之前获取。未拿到锁说明已有实例在跑，直接退出。
 const gotTheLock = app.requestSingleInstanceLock();
@@ -28,6 +37,8 @@ function createWindow() {
     height: 800,
     minWidth: 800,
     minHeight: 600,
+    title: "灵光",
+    icon: getAssetPath("icon.png"),
     // frame: false, // 隐藏标题栏
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
@@ -56,6 +67,50 @@ function createWindow() {
   });
 }
 
+// 创建系统托盘
+function createTray() {
+  if (tray) return;
+  const trayImg = nativeImage.createFromPath(getAssetPath("tray.png"));
+  tray = new Tray(trayImg);
+  tray.setToolTip("灵光");
+
+  const contextMenu = Menu.buildFromTemplate([
+    {
+      label: "显示主界面",
+      click: () => {
+        if (mainWindow) {
+          if (mainWindow.isMinimized()) mainWindow.restore();
+          mainWindow.show();
+          mainWindow.focus();
+        } else {
+          createWindow();
+        }
+      },
+    },
+    { type: "separator" },
+    {
+      label: "退出灵光",
+      click: () => {
+        app.quit();
+      },
+    },
+  ]);
+  tray.setContextMenu(contextMenu);
+
+  // 单击托盘图标切换主窗口显隐
+  tray.on("click", () => {
+    if (!mainWindow) {
+      createWindow();
+      return;
+    }
+    if (mainWindow.isVisible()) {
+      mainWindow.focus();
+    } else {
+      mainWindow.show();
+    }
+  });
+}
+
 app.whenReady().then(async () => {
   // 启动内置 SSO API 服务器
   try {
@@ -66,6 +121,7 @@ app.whenReady().then(async () => {
   }
 
   createWindow();
+  createTray();
 
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) {
