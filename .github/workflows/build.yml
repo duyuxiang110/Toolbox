@@ -43,6 +43,8 @@ jobs:
       - name: electron-builder 打包
         # 每个 runner 各自打自己平台的包：macOS 出 dmg/zip，Windows 出 exe。
         # 覆盖输出目录为仓库内 release/，方便上传产物。
+        # 强制用 bash：避免 Windows 默认的 PowerShell 拆坏 -c.directories.output 参数。
+        shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_IDENTITY_AUTO_DISCOVERY: false # 跳过 mac 代码签名（无证书）

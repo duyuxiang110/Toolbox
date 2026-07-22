@@ -2,6 +2,7 @@
   "name": "lingguang",
   "version": "1.0.0",
   "description": "灵光 - 跨平台实用工具箱桌面应用",
+  "author": "LingGuang",
   "main": "electron/main.js",
   "scripts": {
     "dev": "vite",
@@ -87,8 +88,7 @@
     },
     "portable": {
       "unpackDirName": "LingGuang"
-    },
-    "electronDist": "./node_modules/electron/dist"
+    }
   },
   "dependencies": {
     "@ant-design/icons": "^6.3.2",
