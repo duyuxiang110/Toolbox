@@ -16,8 +16,9 @@
   overflow: hidden;
   cursor: grab;
   user-select: none;
-  transition: box-shadow 0.25s @ease-smooth, border-color 0.25s @ease-smooth,
-    transform 0.2s @ease-smooth;
+  // 注意：这里不要给 transform 加 CSS 过渡，否则会与 dnd-kit 拖拽时
+  // 实时设置的 transform 冲突，导致拖动抖动、跟手迟滞。
+  transition: box-shadow 0.25s @ease-smooth, border-color 0.25s @ease-smooth;
 
   &:hover {
     border-color: fade(@primary, 40%);
