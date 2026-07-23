@@ -1,6 +1,6 @@
 {
   "name": "lingguang",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "灵光 - 跨平台实用工具箱桌面应用",
   "author": "LingGuang",
   "main": "electron/main.js",
@@ -19,6 +19,7 @@
     "appId": "com.lingguang.app",
     "productName": "灵光",
     "artifactName": "LingGuang-${version}-${arch}.${ext}",
+    "afterPack": "build/afterPack.js",
     "directories": {
       "output": "../LingGuang-release"
     },
