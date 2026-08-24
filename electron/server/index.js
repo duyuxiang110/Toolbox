@@ -70,7 +70,7 @@ async function startServer() {
   try {
     await initPool();
     await initDatabase();
-    await createDefaultAdmin();
+    // await createDefaultAdmin();
   } catch (err) {
     console.error('[Server] 数据库初始化失败:', err.message);
     console.log('[Server] 将在 30 秒后重试连接数据库...');
@@ -79,7 +79,7 @@ async function startServer() {
       try {
         await initPool();
         await initDatabase();
-        await createDefaultAdmin();
+        // await createDefaultAdmin();
         console.log('[Server] 数据库重连成功 ✓');
         clearInterval(retryTimer);
       } catch (e) {
@@ -111,34 +111,34 @@ async function startServer() {
  * 创建默认管理员账户
  * 密码流程：前端 MD5(明文) → 服务端 bcrypt(MD5)
  */
-async function createDefaultAdmin() {
-  const bcrypt = require('bcryptjs');
-  const crypto = require('crypto');
-  const { query } = require('./db/pool');
+// async function createDefaultAdmin() {
+//   const bcrypt = require('bcryptjs');
+//   const crypto = require('crypto');
+//   const { query } = require('./db/pool');
 
-  const md5 = (str) => crypto.createHash('md5').update(str).digest('hex');
-  const existing = await query("SELECT id, password_hash FROM users WHERE username = 'admin'");
+//   const md5 = (str) => crypto.createHash('md5').update(str).digest('hex');
+//   const existing = await query("SELECT id, password_hash FROM users WHERE username = 'admin'");
 
-  if (existing.length === 0) {
-    // 新建管理员：bcrypt(md5('Abc3622490'))
-    const hash = await bcrypt.hash(md5('Abc3622490'), config.security.bcryptRounds);
-    await query(
-      `INSERT INTO users (username, email, password_hash, role, status)
-       VALUES ('admin', 'duyuxiang110@gmail.com', ?, 'admin', 'active')`,
-      [hash]
-    );
-    console.log('[Server] 默认管理员已创建: admin / Abc3622490');
-  } else {
-    // 迁移：如果旧哈希是明文流程 bcrypt('Abc3622490')，升级为 MD5 流程
-    const oldHash = existing[0].password_hash;
-    const isOldFlow = await bcrypt.compare('Abc3622490', oldHash).catch(() => false);
-    if (isOldFlow) {
-      const newHash = await bcrypt.hash(md5('Abc3622490'), config.security.bcryptRounds);
-      await query('UPDATE users SET password_hash = ? WHERE id = ?', [newHash, existing[0].id]);
-      console.log('[Server] 管理员密码哈希已升级为 MD5 流程');
-    }
-  }
-}
+//   if (existing.length === 0) {
+//     // 新建管理员：bcrypt(md5('Abc3622490'))
+//     const hash = await bcrypt.hash(md5('Abc3622490'), config.security.bcryptRounds);
+//     await query(
+//       `INSERT INTO users (username, email, password_hash, role, status)
+//        VALUES ('admin', 'duyuxiang110@gmail.com', ?, 'admin', 'active')`,
+//       [hash]
+//     );
+//     console.log('[Server] 默认管理员已创建: admin / Abc3622490');
+//   } else {
+//     // 迁移：如果旧哈希是明文流程 bcrypt('Abc3622490')，升级为 MD5 流程
+//     const oldHash = existing[0].password_hash;
+//     const isOldFlow = await bcrypt.compare('Abc3622490', oldHash).catch(() => false);
+//     if (isOldFlow) {
+//       const newHash = await bcrypt.hash(md5('Abc3622490'), config.security.bcryptRounds);
+//       await query('UPDATE users SET password_hash = ? WHERE id = ?', [newHash, existing[0].id]);
+//       console.log('[Server] 管理员密码哈希已升级为 MD5 流程');
+//     }
+//   }
+// }
 
 /**
  * 停止服务器

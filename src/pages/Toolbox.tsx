@@ -5,17 +5,20 @@
  */
 import { useState } from 'react';
 import { Card, Tag } from 'antd';
-import { FilePdfOutlined, ToolOutlined, ScanOutlined, PictureOutlined, FilePptOutlined, FileWordOutlined, FileImageOutlined, VideoCameraOutlined } from '@ant-design/icons';
+import { FilePdfOutlined, ToolOutlined, ScanOutlined, PictureOutlined, FilePptOutlined, FileWordOutlined, FileImageOutlined, VideoCameraOutlined, SplitCellsOutlined, MergeCellsOutlined } from '@ant-design/icons';
 import ImageToPdf from './tools/ImageToPdf';
 import OcrTool from './tools/OcrTool';
 import ImageProcessor from './tools/ImageProcessor';
 import PdfToPpt from './tools/PdfToPpt';
 import PdfToWord from './tools/PdfToWord';
 import WordToImage from './tools/WordToImage';
+import WordToPdf from './tools/WordToPdf';
 import VideoCompress from './tools/VideoCompress';
+import PdfSplit from './tools/PdfSplit';
+import PdfMerge from './tools/PdfMerge';
 import './Toolbox.less';
 
-type ToolKey = 'image-to-pdf' | 'ocr' | 'image-processor' | 'pdf-to-ppt' | 'pdf-to-word' | 'word-to-image' | 'video-compress';
+type ToolKey = 'image-to-pdf' | 'ocr' | 'image-processor' | 'pdf-to-ppt' | 'pdf-to-word' | 'word-to-image' | 'word-to-pdf' | 'video-compress' | 'pdf-split' | 'pdf-merge';
 
 interface ToolMeta {
   key: ToolKey;
@@ -26,7 +29,7 @@ interface ToolMeta {
   available: boolean;
 }
 
-// 工具清单（后续新增功能在此注册即可）
+
 const TOOLS: ToolMeta[] = [
   {
     key: 'image-to-pdf',
@@ -77,6 +80,30 @@ const TOOLS: ToolMeta[] = [
     available: true,
   },
   {
+    key: 'word-to-pdf',
+    title: 'Word 转 PDF',
+    desc: 'Word 文档按原始排版转为多页 PDF，几页转几页',
+    icon: <FilePdfOutlined />,
+    color: '#e11d48',
+    available: true,
+  },
+  {
+    key: 'pdf-split',
+    title: 'PDF 拆分',
+    desc: '按拆分点把一个 PDF 拆成多个，原样无损',
+    icon: <SplitCellsOutlined />,
+    color: '#0ea5e9',
+    available: true,
+  },
+  {
+    key: 'pdf-merge',
+    title: 'PDF 合并',
+    desc: '多个 PDF 按顺序合并为一个，原样无损',
+    icon: <MergeCellsOutlined />,
+    color: '#d946ef',
+    available: true,
+  },
+  {
     key: 'video-compress',
     title: '视频压缩',
     desc: '压缩视频体积 / 转换视频格式',
@@ -107,6 +134,15 @@ export default function Toolbox() {
   }
   if (activeTool === 'word-to-image') {
     return <WordToImage onBack={() => setActiveTool(null)} />;
+  }
+  if (activeTool === 'word-to-pdf') {
+    return <WordToPdf onBack={() => setActiveTool(null)} />;
+  }
+  if (activeTool === 'pdf-split') {
+    return <PdfSplit onBack={() => setActiveTool(null)} />;
+  }
+  if (activeTool === 'pdf-merge') {
+    return <PdfMerge onBack={() => setActiveTool(null)} />;
   }
   if (activeTool === 'video-compress') {
     return <VideoCompress onBack={() => setActiveTool(null)} />;

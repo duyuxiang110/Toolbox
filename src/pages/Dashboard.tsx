@@ -121,7 +121,7 @@ export default function Dashboard() {
               </linearGradient>
             </defs>
           </svg>
-          <span>SSO Center</span>
+          <span>灵光</span>
         </div>
 
         <nav className="sidebar-nav">

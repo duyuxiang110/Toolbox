@@ -39,6 +39,7 @@ function createWindow() {
     minHeight: 600,
     title: "灵光",
     icon: getAssetPath("icon.png"),
+    // titleBarStyle: 'hidden',
     // frame: false, // 隐藏标题栏
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),

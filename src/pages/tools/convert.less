@@ -71,11 +71,12 @@
   border: 1px solid rgba(255, 255, 255, 0.07);
   border-radius: 10px;
   flex-shrink: 0;
+  gap: 40px;
 
   .opt-item {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 30px;
   }
   .opt-label {
     color: rgba(255, 255, 255, 0.62);
@@ -170,6 +171,112 @@
   }
 }
 
+/* ===== PDF 拆分：页面缩略图网格 ===== */
+.split-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 16px;
+  padding-top: 4px;
+}
+
+.split-card {
+  position: relative;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  overflow: hidden;
+  transition: border-color 0.25s, box-shadow 0.25s;
+
+  &:hover {
+    border-color: rgba(99, 102, 241, 0.4);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  }
+
+  /* 设置了拆分点的页：右侧高亮虚线，示意「从这里剪开」 */
+  &.cut-after {
+    border-right: 2px dashed #f59e0b;
+    box-shadow: 4px 0 0 -1px rgba(245, 158, 11, 0.25);
+  }
+}
+
+/* 左上角「第几份」徽标 */
+.split-seg-badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 2;
+  padding: 1px 8px;
+  border-radius: 6px;
+  background: rgba(99, 102, 241, 0.9);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.split-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 8px 10px;
+
+  .split-page-no {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 12px;
+    white-space: nowrap;
+  }
+}
+
+/* 拆分点的剪刀标记，浮在卡片右侧中部 */
+.split-cut-line {
+  position: absolute;
+  top: 50%;
+  right: -11px;
+  transform: translateY(-50%);
+  z-index: 3;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #f59e0b;
+  color: #fff;
+  font-size: 12px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+
+/* ===== PDF 合并：文件卡片内部 ===== */
+.merge-card-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 22px 12px 12px;
+  text-align: center;
+
+  .merge-card-icon {
+    font-size: 42px;
+    color: #d946ef;
+  }
+  .merge-card-name {
+    width: 100%;
+    color: rgba(255, 255, 255, 0.88);
+    font-size: 13px;
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .merge-card-meta {
+    color: rgba(255, 255, 255, 0.45);
+    font-size: 12px;
+  }
+  .merge-card-remove {
+    margin-top: 2px;
+  }
+}
+
 /* 视频压缩结果卡片 */
 .video-result-card {
   margin: 16px 0;
@@ -190,4 +297,38 @@
       color: #888;
     }
   }
+}
+
+/* ===== Word 转 PDF：结果预览 ===== */
+.wordpdf-preview {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 480px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.wordpdf-preview-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  font-size: 13px;
+  color: #ccc;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  flex-shrink: 0;
+
+  .anticon {
+    color: #e11d48;
+  }
+}
+
+.wordpdf-preview-frame {
+  flex: 1;
+  width: 100%;
+  border: 0;
+  background: #525659; /* 贴近 Chromium PDF 阅读器底色 */
 }

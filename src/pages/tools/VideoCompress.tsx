@@ -14,11 +14,11 @@ import {
   DownloadOutlined,
 } from '@ant-design/icons';
 import { formatBytes } from '../../utils/imageOps';
+import { api } from '../../api/client';
 import './convert.less';
 
 const { Dragger } = Upload;
 const MAX_SIZE = 500 * 1024 * 1024; // 500M
-const API_BASE = 'http://127.0.0.1:3900/api';
 
 const FORMAT_OPTIONS = [
   { value: 'mp4', label: 'MP4' },
@@ -92,14 +92,13 @@ export default function VideoCompress({ onBack }: VideoCompressProps) {
     setResultSize(null);
     setProgress(0);
 
-    // 获取视频元信息
+    // 获取视频元信息（走统一 API 客户端，401 自动处理）
     try {
       const formData = new FormData();
       formData.append('video', f);
-      const resp = await fetch(`${API_BASE}/tools/video-info`, { method: 'POST', body: formData });
-      const json = await resp.json();
-      if (json.success && json.data) {
-        setVideoInfo(json.data);
+      const res = await api.upload<VideoInfo>('/tools/video-info', formData);
+      if (res.success && res.data) {
+        setVideoInfo(res.data);
       }
     } catch {
       // 获取信息失败不阻塞使用
@@ -125,46 +124,21 @@ export default function VideoCompress({ onBack }: VideoCompressProps) {
       formData.append('quality', quality);
       formData.append('resolution', resolution);
 
-      const resp = await fetch(`${API_BASE}/tools/video-compress`, {
-        method: 'POST',
-        body: formData,
+      const { blob } = await api.download('/tools/video-compress', formData, {
         signal: controller.signal,
+        onProgress: (loaded, total) => {
+          // 服务端未返回总长度时用原文件大小估算，封顶 99% 等待写完成
+          const estimate = total > 0 ? total : file.size;
+          if (estimate > 0) {
+            setProgress(Math.min(99, Math.round((loaded / estimate) * 100)));
+          }
+        },
       });
 
-      if (!resp.ok) {
-        let errMsg = `压缩失败（HTTP ${resp.status}）`;
-        try {
-          const json = await resp.json();
-          if (json.message) errMsg = json.message;
-        } catch { /* ignore */ }
-        throw new Error(errMsg);
-      }
-
-      // 读取响应流并显示进度
-      const contentLength = Number(resp.headers.get('Content-Length')) || 0;
-      const outputSize = Number(resp.headers.get('X-Output-Size')) || contentLength;
-
-      if (resp.body) {
-        const reader = resp.body.getReader();
-        const chunks: Uint8Array[] = [];
-        let received = 0;
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          chunks.push(value);
-          received += value.length;
-          if (outputSize > 0) {
-            setProgress(Math.min(99, Math.round((received / outputSize) * 100)));
-          }
-        }
-
-        const blob = new Blob(chunks as BlobPart[], { type: resp.headers.get('Content-Type') || 'video/mp4' });
-        setResultBlob(blob);
-        setResultSize(blob.size);
-        setProgress(100);
-        message.success('压缩完成，可下载结果');
-      }
+      setResultBlob(blob);
+      setResultSize(blob.size);
+      setProgress(100);
+      message.success('压缩完成，可下载结果');
     } catch (err: any) {
       if (err.name === 'AbortError') {
         message.info('已取消压缩');
