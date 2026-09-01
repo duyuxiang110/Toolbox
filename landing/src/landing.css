@@ -111,3 +111,24 @@ body {
 .hero-sub { margin: 26px auto 0; max-width: 560px; color: var(--text-dim); font-size: 17px; line-height: 1.8; transition-delay: 0.2s; }
 .hero-actions { margin-top: 42px; display: flex; gap: 16px; justify-content: center; transition-delay: 0.3s; }
 @media (prefers-reduced-motion: reduce) { .hero-line { opacity: 1; transform: none; filter: none; } }
+
+/* ===== 工具 Grid ===== */
+.tool-grid-wrap { margin-top: 48px; border-radius: var(--radius); }
+.tool-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 18px; padding: 6px;
+}
+.tool-card {
+  position: relative; padding: 26px 22px; border-radius: var(--radius);
+  background: var(--panel); border: 1px solid var(--panel-border);
+  transition: opacity 0.8s var(--ease), transform 0.8s var(--ease), background 0.3s, border-color 0.3s;
+}
+.tool-card:hover { background: rgba(255, 255, 255, 0.07); border-color: rgba(108, 140, 255, 0.45); }
+.tool-icon {
+  width: 48px; height: 48px; border-radius: 13px; display: grid; place-items: center;
+  color: var(--accent);
+  background: linear-gradient(135deg, rgba(108, 140, 255, 0.18), rgba(160, 107, 255, 0.18));
+  border: 1px solid rgba(108, 140, 255, 0.25);
+}
+.tool-card h3 { margin: 16px 0 8px; font-size: 17px; }
+.tool-card p { margin: 0; color: var(--text-dim); font-size: 14px; line-height: 1.7; }
