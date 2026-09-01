@@ -13,9 +13,9 @@ export default function App() {
     <main className="page" id="top">
       <Navbar />
       <SectionGate minHeight={640}><Hero /></SectionGate>
-      <SectionGate minHeight={720}><ToolGrid /></SectionGate>
-      <SectionGate minHeight={640}><Highlights /></SectionGate>
-      <SectionGate minHeight={560}><DownloadSection /></SectionGate>
+      <SectionGate id="tools" minHeight={720}><ToolGrid /></SectionGate>
+      <SectionGate id="highlights" minHeight={640}><Highlights /></SectionGate>
+      <SectionGate id="download" minHeight={560}><DownloadSection /></SectionGate>
       <SectionGate minHeight={100}><Footer /></SectionGate>
     </main>
   )

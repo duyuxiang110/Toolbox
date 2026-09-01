@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useAppMeta, type Arch } from '@/hooks/useAppMeta'
 import { useInView } from '@/hooks/useInView'
 
@@ -11,15 +11,19 @@ export default function DownloadSection() {
   const { version, isMac, recommendedArch } = useAppMeta()
   const { ref, inView } = useInView<HTMLElement>('0px 0px -10% 0px')
   const [downloading, setDownloading] = useState<Arch | null>(null)
+  const timerRef = useRef<number | undefined>(undefined)
+
+  useEffect(() => () => window.clearTimeout(timerRef.current), [])
 
   const url = (arch: Arch) => `/downloads/LingGuang-${version}-${arch}.dmg`
   const onDownload = (arch: Arch) => {
+    window.clearTimeout(timerRef.current)
     setDownloading(arch)
-    window.setTimeout(() => setDownloading(null), 2400)
+    timerRef.current = window.setTimeout(() => setDownloading(null), 2400)
   }
 
   return (
-    <section className="section download" id="download" ref={ref}>
+    <section className="section download" ref={ref}>
       <div className="container">
         <h2 className={`section-title reveal ${inView ? 'in-view' : ''}`}>下载灵光</h2>
         <p className={`section-sub reveal ${inView ? 'in-view' : ''}`}>

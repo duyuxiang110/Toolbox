@@ -21,7 +21,7 @@ function HighlightRow({ h, index }: { h: Highlight; index: number }) {
 
 export default function Highlights() {
   return (
-    <section className="section" id="highlights">
+    <section className="section">
       <div className="container">
         {highlights.map((h, i) => (
           <HighlightRow key={h.title} h={h} index={i} />

@@ -7,7 +7,7 @@ export default function ToolGrid() {
   const { ref, inView } = useInView<HTMLElement>('0px 0px -8% 0px')
 
   return (
-    <section className="section" id="tools" ref={ref}>
+    <section className="section" ref={ref}>
       <div className="container">
         <h2 className={`section-title reveal ${inView ? 'in-view' : ''}`}>十大工具，一个客户端</h2>
         <p className={`section-sub reveal ${inView ? 'in-view' : ''}`}>覆盖文档、图片、识别与视频的日常高频操作</p>
