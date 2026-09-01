@@ -1,1 +1,49 @@
-/* 全局样式在 Task 3 写入 */
+:root {
+  --bg: #05060f;
+  --bg-soft: #0a0d1c;
+  --panel: rgba(255, 255, 255, 0.04);
+  --panel-border: rgba(255, 255, 255, 0.08);
+  --text: #eef1ff;
+  --text-dim: #9aa3c0;
+  --accent: #6c8cff;
+  --accent-2: #a06bff;
+  --glow: radial-gradient(circle at 50% 0%, rgba(108, 140, 255, 0.16), transparent 60%);
+  --radius: 18px;
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.container { width: min(1120px, 92vw); margin: 0 auto; }
+
+.section { position: relative; padding: 120px 0; }
+.section-title {
+  font-size: clamp(28px, 4vw, 44px);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  background: linear-gradient(120deg, #fff, #b9c4ff);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.section-sub { color: var(--text-dim); margin-top: 14px; font-size: 16px; }
+
+/* 通用入场动画：配合 useInView 的 in-view 类 */
+.reveal { opacity: 0; transform: translateY(28px); transition: opacity 0.9s var(--ease), transform 0.9s var(--ease); }
+.reveal.in-view { opacity: 1; transform: none; }
+.reveal-left { opacity: 0; transform: translateX(-36px); transition: opacity 0.9s var(--ease), transform 0.9s var(--ease); }
+.reveal-right { opacity: 0; transform: translateX(36px); transition: opacity 0.9s var(--ease), transform 0.9s var(--ease); }
+.reveal-left.in-view, .reveal-right.in-view { opacity: 1; transform: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .reveal, .reveal-left, .reveal-right { opacity: 1; transform: none; transition: none; }
+}
