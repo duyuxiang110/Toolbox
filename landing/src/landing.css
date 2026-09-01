@@ -85,3 +85,29 @@ body {
 .btn-sm { padding: 8px 18px; font-size: 14px; }
 
 @media (max-width: 640px) { .nav-links { display: none; } }
+
+/* ===== Hero ===== */
+.hero { position: relative; min-height: 100vh; display: flex; align-items: center; overflow: hidden; }
+.hero-glow {
+  position: absolute; inset: 0; background: var(--glow);
+  opacity: 0; transition: opacity 1.6s var(--ease);
+}
+.hero-glow.on { opacity: 1; }
+.hero-inner { position: relative; text-align: center; padding: 140px 0 120px; }
+.hero-badge {
+  display: inline-block; padding: 6px 16px; border-radius: 999px;
+  border: 1px solid var(--panel-border); background: var(--panel);
+  color: var(--text-dim); font-size: 13px;
+}
+.hero-title { margin: 28px 0 0; font-size: clamp(40px, 7vw, 84px); line-height: 1.15; letter-spacing: 0.02em; }
+.hero-line { display: block; opacity: 0; transform: translateY(34px); filter: blur(8px); transition: all 1s var(--ease); }
+.hero-line.in-view { opacity: 1; transform: none; filter: blur(0); }
+.hero-line-2 { transition-delay: 0.15s; }
+.hero-title em {
+  font-style: normal;
+  background: linear-gradient(120deg, var(--accent), var(--accent-2));
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.hero-sub { margin: 26px auto 0; max-width: 560px; color: var(--text-dim); font-size: 17px; line-height: 1.8; transition-delay: 0.2s; }
+.hero-actions { margin-top: 42px; display: flex; gap: 16px; justify-content: center; transition-delay: 0.3s; }
+@media (prefers-reduced-motion: reduce) { .hero-line { opacity: 1; transform: none; filter: none; } }
