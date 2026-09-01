@@ -15,6 +15,8 @@ else
   echo "未识别的包管理器，请手动安装 nginx" >&2; exit 1
 fi
 mkdir -p /var/www/lingguang/site /var/www/lingguang/downloads
+# 禁用发行版自带默认站点，避免与我们的 default_server 冲突
+rm -f /etc/nginx/sites-enabled/default
 systemctl enable nginx || true
 EOS
 
