@@ -84,7 +84,7 @@ body {
 .btn-lg { padding: 14px 32px; font-size: 16px; }
 .btn-sm { padding: 8px 18px; font-size: 14px; }
 
-@media (max-width: 640px) { .nav-links { display: none; } }
+@media (max-width: 640px) { .nav-links { display: none; } .navbar .btn { margin-left: auto; } }
 
 /* ===== Hero ===== */
 .hero { position: relative; min-height: 100vh; display: flex; align-items: center; overflow: hidden; }
