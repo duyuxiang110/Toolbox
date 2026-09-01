@@ -15,7 +15,14 @@ const Footer = lazy(() => import('./components/Footer'))
 export default function App() {
   useHashScroll()
   return (
-    <Liquid style={{ height: '100dvh' }}>
+    <Liquid
+      radius={0.15}
+      force={0.55}
+      distortion={0.22}
+      blend={2.4}
+      intensity={1.5}
+      style={{ height: '100dvh' }}
+    >
       <ParticleScroll style={{ height: '100%' }}>
         <main className="page" id="top">
           <Navbar />

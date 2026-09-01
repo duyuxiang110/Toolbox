@@ -36,7 +36,7 @@ export interface LiquidOptions {
   /** How much of the fluid color blends over the content. */
   blend?: number;
   /** Trail color as [r, g, b] in 0-1 range. Ignored when rainbow is on. */
-  color?: [number, number, number];
+  color?: string;
   /** Color the trail from the flow direction instead of a fixed color. */
   rainbow?: boolean;
 }
@@ -74,8 +74,8 @@ const DEFAULTS: Required<LiquidOptions> = {
   intensity: 2,
   distortion: 0.4,
   blend: 5,
-  color: [0.145, 0.239, 0.867],
-  rainbow: false,
+  color: "#425bff",
+  rainbow: true,
 };
 
 const DT = 1 / 60;
@@ -84,6 +84,24 @@ function srgbToLinear(value: number): number {
   return value <= 0.04045
     ? value / 12.92
     : Math.pow((value + 0.055) / 1.055, 2.4);
+}
+
+function parseColor(hex: string): [number, number, number] {
+  const value = hex.replace("#", "");
+  const full =
+    value.length === 3
+      ? value
+          .split("")
+          .map((c) => c + c)
+          .join("")
+      : value;
+  const int = parseInt(full, 16);
+  if (Number.isNaN(int)) return [0, 0, 0];
+  return [
+    ((int >> 16) & 255) / 255,
+    ((int >> 8) & 255) / 255,
+    (int & 255) / 255,
+  ];
 }
 
 type PaintableCanvas = HTMLCanvasElement & {
@@ -351,7 +369,7 @@ export function createLiquid(
 
   const supportsFloatTargets = Boolean(
     gl.getExtension("EXT_color_buffer_float") ||
-      gl.getExtension("EXT_color_buffer_half_float"),
+    gl.getExtension("EXT_color_buffer_half_float"),
   );
   if (!supportsFloatTargets) return null;
 
@@ -503,30 +521,10 @@ export function createLiquid(
     dyeResolution: number,
   ): FluidTargets {
     return {
-      velocity: createDoubleTarget(
-        simResolution,
-        gl!.RG16F,
-        gl!.RG,
-        filtering,
-      ),
-      dye: createDoubleTarget(
-        dyeResolution,
-        gl!.RGBA16F,
-        gl!.RGBA,
-        filtering,
-      ),
-      divergence: createTarget(
-        simResolution,
-        gl!.R16F,
-        gl!.RED,
-        gl!.NEAREST,
-      ),
-      curl: createTarget(
-        simResolution,
-        gl!.R16F,
-        gl!.RED,
-        gl!.NEAREST,
-      ),
+      velocity: createDoubleTarget(simResolution, gl!.RG16F, gl!.RG, filtering),
+      dye: createDoubleTarget(dyeResolution, gl!.RGBA16F, gl!.RGBA, filtering),
+      divergence: createTarget(simResolution, gl!.R16F, gl!.RED, gl!.NEAREST),
+      curl: createTarget(simResolution, gl!.R16F, gl!.RED, gl!.NEAREST),
       pressure: createDoubleTarget(
         simResolution,
         gl!.R16F,
@@ -585,7 +583,10 @@ export function createLiquid(
     if (htmlInCanvas) {
       const cssWidth = Math.max(1, Math.round(source.clientWidth));
       const cssHeight = Math.max(1, Math.round(source.clientHeight));
-      if (source.width !== cssWidth * dpr || source.height !== cssHeight * dpr) {
+      if (
+        source.width !== cssWidth * dpr ||
+        source.height !== cssHeight * dpr
+      ) {
         source.width = cssWidth * dpr;
         source.height = cssHeight * dpr;
       }
@@ -645,6 +646,28 @@ export function createLiquid(
     return unit;
   }
 
+  // 按移动方向取色相，注入真实彩虹染料（原生 (dx,dy,10) 会被蓝色通道主导，归一化后无彩虹）
+  function rainbowDye(dx: number, dy: number): [number, number, number] {
+    const angle = Math.atan2(dy, dx);
+    const h = (((angle / (Math.PI * 2)) % 1) + 1) % 1;
+    const i = Math.floor(h * 6);
+    const f = h * 6 - i;
+    const rgb =
+      i % 6 === 0
+        ? [1, f, 0]
+        : i % 6 === 1
+          ? [1 - f, 1, 0]
+          : i % 6 === 2
+            ? [0, 1, f]
+            : i % 6 === 3
+              ? [0, 1 - f, 1]
+              : i % 6 === 4
+                ? [f, 0, 1]
+                : [1, 0, 1 - f];
+    const scale = Math.min(Math.hypot(dx, dy) * 1.4, 3) + 0.8;
+    return [rgb[0] * scale, rgb[1] * scale, rgb[2] * scale];
+  }
+
   function applySplat(x: number, y: number, dx: number, dy: number) {
     const aspect = output.clientWidth / Math.max(output.clientHeight, 1);
     const radius = config.radius / 100;
@@ -665,6 +688,8 @@ export function createLiquid(
       splatProgram.uniforms.uTarget,
       bindTexture(fluidTargets.dye.read.texture, 0),
     );
+    const dye = config.rainbow ? rainbowDye(dx, dy) : [dx, dy, 10];
+    gl!.uniform3f(splatProgram.uniforms.uColor, dye[0], dye[1], dye[2]);
     blit(fluidTargets.dye.write);
     fluidTargets.dye.swap();
   }
@@ -788,11 +813,12 @@ export function createLiquid(
       displayProgram.uniforms.uFluid,
       bindTexture(fluidTargets.dye.read.texture, 1),
     );
+    const [cr, cg, cb] = parseColor(config.color);
     gl!.uniform3f(
       displayProgram.uniforms.uColor,
-      srgbToLinear(config.color[0]),
-      srgbToLinear(config.color[1]),
-      srgbToLinear(config.color[2]),
+      srgbToLinear(cr),
+      srgbToLinear(cg),
+      srgbToLinear(cb),
     );
     gl!.uniform1f(displayProgram.uniforms.uDistortion, config.distortion);
     gl!.uniform1f(displayProgram.uniforms.uIntensity, config.intensity);
@@ -901,12 +927,12 @@ export function createLiquid(
   listenTarget.addEventListener("pointerdown", onPointerDown as EventListener, {
     passive: true,
   });
-  listenTarget.addEventListener("pointermove", onPointerMove as EventListener, { passive: true });
-  listenTarget.addEventListener(
-    "pointerup",
-    onPointerLeave as EventListener,
-    { passive: true },
-  );
+  listenTarget.addEventListener("pointermove", onPointerMove as EventListener, {
+    passive: true,
+  });
+  listenTarget.addEventListener("pointerup", onPointerLeave as EventListener, {
+    passive: true,
+  });
   listenTarget.addEventListener(
     "pointerleave",
     onPointerLeave as EventListener,
