@@ -1,3 +1,9 @@
+import Navbar from './components/Navbar'
+
 export default function App() {
-  return <main className="page">灵光官网骨架</main>
+  return (
+    <main className="page" id="top">
+      <Navbar />
+    </main>
+  )
 }
