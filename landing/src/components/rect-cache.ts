@@ -24,3 +24,4 @@ export function createRectCache(element: Element) {
     },
   };
 }
+

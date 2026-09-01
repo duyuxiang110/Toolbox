@@ -1,57 +1,54 @@
-import { useEffect, useRef, useState } from 'react'
-import { useAppMeta, type Arch } from '@/hooks/useAppMeta'
+import { useAppMeta } from '@/hooks/useAppMeta'
 import { useInView } from '@/hooks/useInView'
 
-const archs: { arch: Arch; label: string; sub: string }[] = [
-  { arch: 'arm64', label: 'Apple 芯片', sub: 'M1 / M2 / M3 / M4 系列' },
-  { arch: 'x64', label: 'Intel 芯片', sub: '2020 年前的 Mac' },
-]
+function DlCard({ arch, hint, recommended, url, listCls }: {
+  arch: string; hint: string; recommended: boolean; url: string; listCls: string
+}) {
+  return (
+    <div className={`dl-card reveal ${listCls} ${recommended ? 'dl-recommended' : ''}`}>
+      {recommended && <span className="dl-badge">推荐</span>}
+      <h3>macOS · {arch}</h3>
+      <p>{hint}</p>
+      <a className="btn btn-primary" href={url}>下载安装包</a>
+    </div>
+  )
+}
 
 export default function DownloadSection() {
+  const { ref, inView } = useInView<HTMLDivElement>('0px 0px -8% 0px')
+  const listCls = inView ? 'in-view' : ''
   const { version, isMac, recommendedArch } = useAppMeta()
-  const { ref, inView } = useInView<HTMLElement>('0px 0px -10% 0px')
-  const [downloading, setDownloading] = useState<Arch | null>(null)
-  const timerRef = useRef<number | undefined>(undefined)
 
-  useEffect(() => () => window.clearTimeout(timerRef.current), [])
-
-  const url = (arch: Arch) => `/downloads/LingGuang-${version}-${arch}.dmg`
-  const onDownload = (arch: Arch) => {
-    window.clearTimeout(timerRef.current)
-    setDownloading(arch)
-    timerRef.current = window.setTimeout(() => setDownloading(null), 2400)
-  }
+  const url = (arch: string) => `/downloads/LingGuang-${version}-${arch}.dmg`
 
   return (
-    <section className="section download" ref={ref}>
+    <section className="section">
       <div className="container">
-        <h2 className={`section-title reveal ${inView ? 'in-view' : ''}`}>下载灵光</h2>
-        <p className={`section-sub reveal ${inView ? 'in-view' : ''}`}>
-          v{version} · macOS{!isMac && '（当前仅提供 macOS 版）'}
-        </p>
-        <div className="dl-grid">
-          {archs.map(({ arch, label, sub }, i) => {
-            const recommended = isMac && arch === recommendedArch
-            return (
-              <div
-                key={arch}
-                className={`dl-card reveal ${inView ? 'in-view' : ''} ${recommended ? 'dl-recommended' : ''}`}
-                style={{ transitionDelay: `${i * 120}ms` }}
-              >
-                {recommended && <span className="dl-badge">为你推荐</span>}
-                <h3>macOS · {label}</h3>
-                <p>{sub}</p>
-                <a className="btn btn-primary btn-lg" href={url(arch)} download onClick={() => onDownload(arch)}>
-                  {downloading === arch ? '开始下载…' : '下载 dmg'}
-                </a>
-              </div>
-            )
-          })}
+        <div ref={ref} className="dl-panel">
+          <p className={`eyebrow reveal ${listCls}`}>03 · Download</p>
+          <h2 className={`section-title reveal ${listCls}`}>选择你的芯片架构</h2>
+          <p className="section-sub">安装后从「启动台」打开即可使用，两种架构均提供。</p>
+          <div className="dl-grid">
+            <DlCard
+              arch="Apple 芯片 (arm64)"
+              hint="M1 / M2 / M3 / M4 系列"
+              recommended={isMac && recommendedArch === 'arm64'}
+              url={url('arm64')}
+              listCls={listCls}
+            />
+            <DlCard
+              arch="Intel (x64)"
+              hint="2020 年前的旧款 Mac"
+              recommended={isMac && recommendedArch === 'x64'}
+              url={url('x64')}
+              listCls={listCls}
+            />
+          </div>
+          <p className="dl-tip">
+            首次打开如提示「无法验证开发者」：右键点击应用图标 → 选择「打开」，或在
+            「系统设置 → 隐私与安全性」中点击「仍要打开」。
+          </p>
         </div>
-        <p className="dl-tip">
-          未签名应用提示处理：安装后首次打开如被拦截，请在访达中对该应用「右键 → 打开」，
-          或在「系统设置 → 隐私与安全性」中点击「仍要打开」。
-        </p>
       </div>
     </section>
   )
