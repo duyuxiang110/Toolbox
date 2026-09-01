@@ -1,9 +1,9 @@
 // ===== Dashboard 仪表盘样式 =====
 @import '../styles/variables.less';
 
-@sidebar-border: rgba(255, 255, 255, 0.06);
-@card-bg: rgba(255, 255, 255, 0.02);
-@card-border: rgba(255, 255, 255, 0.06);
+@sidebar-border: var(--border-faint);
+@card-bg: var(--bg-card);
+@card-border: var(--border-faint);
 
 .dashboard {
   display: flex;
@@ -16,7 +16,7 @@
 // 侧边栏
 .sidebar {
   width: 240px;
-  background: rgba(15, 17, 23, 0.95);
+  background: var(--sidebar-bg);
   border-right: 1px solid @sidebar-border;
   display: flex;
   flex-direction: column;
@@ -56,7 +56,7 @@
 
     &:hover {
       background: @border-faint;
-      color: rgba(255, 255, 255, 0.8);
+      color: var(--text-primary);
     }
 
     &.active {
@@ -100,7 +100,7 @@
 .user-name {
   font-size: 13px;
   font-weight: 600;
-  color: #fff;
+  color: var(--text-primary);
 }
 
 .user-role {
@@ -153,6 +153,12 @@
   color: @text-muted;
 }
 
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
 // 统计卡片
 .stats-grid {
   display: grid;
@@ -171,7 +177,7 @@
   &:hover {
     background: @border-faint;
     transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+    box-shadow: var(--shadow-card);
   }
 }
 
@@ -287,7 +293,7 @@
   td {
     padding: 12px 16px;
     font-size: 13px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+    border-bottom: 1px solid var(--border-faint);
   }
 
   tr:hover td {
@@ -522,16 +528,16 @@
 
 .btn-confirm-no {
   padding: 4px 10px;
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  border: 1px solid var(--border-input);
   border-radius: 6px;
   background: transparent;
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--text-secondary);
   font-size: 12px;
   cursor: pointer;
   transition: all 0.2s;
 
   &:hover {
-    border-color: rgba(255, 255, 255, 0.3);
-    color: #fff;
+    border-color: var(--border-light);
+    color: var(--text-primary);
   }
 }

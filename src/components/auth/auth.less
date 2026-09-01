@@ -8,13 +8,21 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, @bg-deep 0%, #1a1a3e 40%, #24243e 100%);
+  background: linear-gradient(135deg, var(--auth-grad-1) 0%, var(--auth-grad-2) 40%, var(--auth-grad-3) 100%);
   overflow: hidden;
 }
 
 // 粒子画布
 .particle-bg {
   z-index: 1;
+}
+
+// 主题切换按钮：右上角悬浮，与卡片保持呼吸感距离，不干扰视觉中心
+.auth-theme-toggle {
+  position: absolute;
+  top: 28px;
+  right: 28px;
+  z-index: 10;
 }
 
 // 光晕装饰
@@ -178,7 +186,7 @@
   label {
     position: absolute;
     left: 16px;
-    color: rgba(255, 255, 255, 0.35);
+    color: var(--text-faint);
     display: flex;
     align-items: center;
     transition: color 0.3s;
@@ -223,7 +231,7 @@
   right: 14px;
   background: none;
   border: none;
-  color: rgba(255, 255, 255, 0.35);
+  color: var(--text-faint);
   cursor: pointer;
   padding: 4px;
   display: flex;
@@ -231,7 +239,7 @@
   transition: color 0.3s;
 
   &:hover {
-    color: rgba(255, 255, 255, 0.7);
+    color: var(--text-secondary);
   }
 }
 
@@ -277,7 +285,7 @@
 .checkmark {
   width: 16px;
   height: 16px;
-  border: 1.5px solid rgba(255, 255, 255, 0.2);
+  border: 1.5px solid var(--border-input);
   border-radius: 5px;
   transition: all 0.2s;
   position: relative;
@@ -307,7 +315,7 @@
   align-items: center;
   justify-content: center;
   padding: 24px;
-  background: rgba(10, 8, 30, 0.7);
+  background: var(--overlay-bg);
   backdrop-filter: blur(8px);
   animation: forgot-fade 0.25s @ease-out;
 }
@@ -318,8 +326,8 @@
   max-width: 400px;
   padding: 40px 36px 32px;
   border-radius: 20px;
-  border: 1px solid fade(#fff, 10%);
-  background: linear-gradient(160deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03));
+  border: 1px solid var(--border-light);
+  background: var(--bg-elevated);
   box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
   text-align: center;
   animation: forgot-pop 0.3s @ease-out;
@@ -342,7 +350,7 @@
   transition: all 0.2s;
 
   &:hover {
-    background: fade(#fff, 8%);
+    background: var(--bg-hover);
     color: @text-primary;
   }
 }
@@ -398,8 +406,8 @@
     align-items: center;
     justify-content: center;
     border-radius: 50%;
-    border: 1.5px solid fade(#fff, 18%);
-    background: fade(#fff, 4%);
+    border: 1.5px solid var(--border-input);
+    background: var(--bg-input);
     color: @text-secondary;
     font-size: 12px;
     font-weight: 700;
@@ -418,7 +426,7 @@
     height: 2px;
     margin: 0 8px;
     border-radius: 1px;
-    background: fade(#fff, 12%);
+    background: var(--border-light);
     transition: background 0.35s @ease-smooth;
 
     &.on {
@@ -484,17 +492,17 @@
   .forgot-back {
     flex-shrink: 0;
     padding: 13px 18px;
-    border: 1px solid fade(#fff, 14%);
+    border: 1px solid var(--border-input);
     border-radius: @radius-lg;
-    background: fade(#fff, 4%);
+    background: var(--bg-input);
     color: @text-body;
     font-size: 14px;
     cursor: pointer;
     transition: all 0.25s @ease-out;
 
     &:hover:not(:disabled) {
-      background: fade(#fff, 9%);
-      border-color: fade(#fff, 24%);
+      background: var(--bg-hover);
+      border-color: var(--border-input);
       color: @text-primary;
     }
 

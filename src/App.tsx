@@ -2,10 +2,11 @@ import { useState } from "react";
 import { ConfigProvider, App as AntdApp } from "antd";
 import zhCN from "antd/locale/zh_CN";
 import { AuthProvider, useAuth } from "./context/AuthContext";
+import { ThemeProvider, useTheme } from "./context/ThemeContext";
 import LoginPage from "./components/auth/LoginPage";
 import RegisterPage from "./components/auth/RegisterPage";
 import Dashboard from "./pages/Dashboard";
-import { ssoTheme } from "./theme/antdTheme";
+import { ssoTheme, ssoLightTheme } from "./theme/antdTheme";
 import "./App.less";
 
 function AppContent() {
@@ -32,15 +33,25 @@ function AppContent() {
   return <Dashboard />;
 }
 
-function App() {
+function ThemedApp() {
+  const { isDark } = useTheme();
+
   return (
-    <ConfigProvider theme={ssoTheme} locale={zhCN}>
+    <ConfigProvider theme={isDark ? ssoTheme : ssoLightTheme} locale={zhCN}>
       <AntdApp>
         <AuthProvider>
           <AppContent />
         </AuthProvider>
       </AntdApp>
     </ConfigProvider>
+  );
+}
+
+function App() {
+  return (
+    <ThemeProvider>
+      <ThemedApp />
+    </ThemeProvider>
   );
 }
 

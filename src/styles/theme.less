@@ -1,0 +1,72 @@
+/**
+ * 主题变量 - 暗色 / 亮色双主题
+ * 暗色为默认（:root），亮色通过根节点 data-theme="light" 覆盖
+ * 所有结构性颜色（背景 / 文字 / 边框）统一引用此处 CSS 变量，
+ * 品牌色（primary / success 等）两套主题通用，不做切换
+ */
+
+:root {
+  // 背景
+  --bg-deep: #0f0c29;
+  --bg-dark: #0f1117;
+  --bg-card: rgba(255, 255, 255, 0.03);
+  --bg-input: rgba(255, 255, 255, 0.04);
+  --bg-hover: rgba(255, 255, 255, 0.05);
+  --bg-elevated: #1a1c24;
+  --sidebar-bg: rgba(15, 17, 23, 0.95);
+  --well-bg: rgba(0, 0, 0, 0.2);
+  --overlay-bg: rgba(10, 8, 30, 0.7);
+
+  // 登录页渐变
+  --auth-grad-1: #0f0c29;
+  --auth-grad-2: #1a1a3e;
+  --auth-grad-3: #24243e;
+
+  // 文字
+  --text-primary: #ffffff;
+  --text-body: #e2e8f0;
+  --text-secondary: rgba(255, 255, 255, 0.65);
+  --text-muted: rgba(255, 255, 255, 0.45);
+  --text-faint: rgba(255, 255, 255, 0.3);
+
+  // 边框
+  --border-light: rgba(255, 255, 255, 0.08);
+  --border-input: rgba(255, 255, 255, 0.1);
+  --border-faint: rgba(255, 255, 255, 0.05);
+
+  // 阴影
+  --shadow-card: 0 8px 24px rgba(0, 0, 0, 0.2);
+}
+
+[data-theme='light'] {
+  // 背景
+  --bg-deep: #e7ebff;
+  --bg-dark: #f4f6fb;
+  --bg-card: #ffffff;
+  --bg-input: rgba(15, 23, 42, 0.04);
+  --bg-hover: rgba(99, 102, 241, 0.07);
+  --bg-elevated: #ffffff;
+  --sidebar-bg: rgba(255, 255, 255, 0.92);
+  --well-bg: #eef1f7;
+  --overlay-bg: rgba(30, 41, 59, 0.45);
+
+  // 登录页渐变
+  --auth-grad-1: #dfe5ff;
+  --auth-grad-2: #eef1ff;
+  --auth-grad-3: #f8f9ff;
+
+  // 文字
+  --text-primary: #1e2433;
+  --text-body: #374151;
+  --text-secondary: rgba(30, 41, 59, 0.65);
+  --text-muted: rgba(30, 41, 59, 0.5);
+  --text-faint: rgba(30, 41, 59, 0.35);
+
+  // 边框
+  --border-light: rgba(30, 41, 59, 0.12);
+  --border-input: rgba(30, 41, 59, 0.16);
+  --border-faint: rgba(30, 41, 59, 0.06);
+
+  // 阴影
+  --shadow-card: 0 8px 24px rgba(30, 41, 59, 0.08);
+}

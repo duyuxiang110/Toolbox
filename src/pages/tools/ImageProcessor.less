@@ -96,12 +96,12 @@
   padding: 8px;
   border-radius: @radius-md;
   border: 1px solid transparent;
-  background: fade(#fff, 3%);
+  background: var(--bg-input);
   cursor: pointer;
   transition: all 0.2s @ease-out;
 
   &:hover {
-    background: fade(#fff, 6%);
+    background: var(--bg-hover);
   }
 
   &.active {
@@ -118,7 +118,7 @@
   object-fit: cover;
   border-radius: @radius-sm;
   border: 1px solid @border-light;
-  background: rgba(0, 0, 0, 0.25);
+  background: var(--well-bg);
 }
 
 .imgproc-item-info {
@@ -188,7 +188,7 @@
   padding: 18px;
   border-radius: @radius-md;
   border: 1px solid @border-light;
-  background: fade(#fff, 2%);
+  background: var(--bg-input);
 }
 
 .ctrl-row {
@@ -251,7 +251,7 @@
   justify-content: center;
   border-radius: @radius-md;
   border: 1px dashed @border-light;
-  background: rgba(0, 0, 0, 0.18);
+  background: var(--well-bg);
   overflow: hidden;
   min-height: 380px;
 }

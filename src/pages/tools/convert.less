@@ -35,8 +35,8 @@
 .convert-uploader {
   flex-shrink: 0;
   .ant-upload-drag {
-    background: rgba(255, 255, 255, 0.03);
-    border: 1.5px dashed rgba(255, 255, 255, 0.16);
+    background: var(--bg-card);
+    border: 1.5px dashed var(--border-input);
     border-radius: 12px;
     transition: all 0.25s;
 
@@ -51,11 +51,11 @@
     margin-bottom: 6px;
   }
   .ant-upload-text {
-    color: rgba(255, 255, 255, 0.88);
+    color: var(--text-primary);
     font-size: 15px;
   }
   .ant-upload-hint {
-    color: rgba(255, 255, 255, 0.42);
+    color: var(--text-muted);
     font-size: 12.5px;
   }
 }
@@ -67,8 +67,8 @@
   gap: 18px;
   flex-wrap: wrap;
   padding: 12px 16px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: var(--bg-card);
+  border: 1px solid var(--border-faint);
   border-radius: 10px;
   flex-shrink: 0;
   gap: 40px;
@@ -79,7 +79,7 @@
     gap: 30px;
   }
   .opt-label {
-    color: rgba(255, 255, 255, 0.62);
+    color: var(--text-secondary);
     font-size: 13px;
     white-space: nowrap;
   }
@@ -105,7 +105,7 @@
     color: #6366f1;
   }
   .fi-name {
-    color: rgba(255, 255, 255, 0.9);
+    color: var(--text-primary);
     font-size: 13.5px;
     font-weight: 500;
     overflow: hidden;
@@ -113,7 +113,7 @@
     white-space: nowrap;
   }
   .fi-meta {
-    color: rgba(255, 255, 255, 0.45);
+    color: var(--text-muted);
     font-size: 12px;
     margin-left: auto;
     white-space: nowrap;
@@ -136,7 +136,7 @@
   align-items: center;
   justify-content: center;
   height: 180px;
-  background: rgba(0, 0, 0, 0.18);
+  background: var(--well-bg);
   overflow: hidden;
 }
 
@@ -148,7 +148,7 @@
 
 .cc-footer {
   padding: 6px 8px;
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--text-muted);
   font-size: 11.5px;
   text-align: center;
   white-space: nowrap;
@@ -165,7 +165,7 @@
 
   .result-img {
     max-width: 50%;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid var(--border-input);
     border-radius: 8px;
     box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
   }
@@ -181,15 +181,15 @@
 
 .split-card {
   position: relative;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
   border-radius: 10px;
   overflow: hidden;
   transition: border-color 0.25s, box-shadow 0.25s;
 
   &:hover {
     border-color: rgba(99, 102, 241, 0.4);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+    box-shadow: var(--shadow-card);
   }
 
   /* 设置了拆分点的页：右侧高亮虚线，示意「从这里剪开」 */
@@ -221,7 +221,7 @@
   padding: 8px 10px;
 
   .split-page-no {
-    color: rgba(255, 255, 255, 0.6);
+    color: var(--text-secondary);
     font-size: 12px;
     white-space: nowrap;
   }
@@ -261,7 +261,7 @@
   }
   .merge-card-name {
     width: 100%;
-    color: rgba(255, 255, 255, 0.88);
+    color: var(--text-primary);
     font-size: 13px;
     font-weight: 500;
     overflow: hidden;
@@ -269,7 +269,7 @@
     white-space: nowrap;
   }
   .merge-card-meta {
-    color: rgba(255, 255, 255, 0.45);
+    color: var(--text-muted);
     font-size: 12px;
   }
   .merge-card-remove {
@@ -281,8 +281,8 @@
 .video-result-card {
   margin: 16px 0;
   padding: 14px 18px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--bg-input);
+  border: 1px solid var(--border-light);
   border-radius: 10px;
 
   .video-result-row {
@@ -291,12 +291,70 @@
     align-items: center;
     padding: 5px 0;
     font-size: 13px;
-    color: #ccc;
+    color: var(--text-body);
 
     .video-result-label {
-      color: #888;
+      color: var(--text-muted);
     }
   }
+}
+
+/* ===== PDF 转 Word：文本提取预览 ===== */
+.ptw-report {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ptw-report-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  border-radius: 10px;
+  color: var(--text-secondary);
+  font-size: 13px;
+
+  .anticon {
+    color: #10b981;
+  }
+}
+
+.ptw-report-lines {
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: 10px;
+  padding: 10px 0;
+  max-height: 460px;
+  overflow-y: auto;
+}
+
+.ptw-report-line {
+  padding: 4px 14px;
+  color: var(--text-secondary);
+  font-size: 12.5px;
+  line-height: 1.7;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border-left: 2px solid transparent;
+  transition: border-color 0.2s, color 0.2s;
+
+  &:hover {
+    border-left-color: rgba(99, 102, 241, 0.6);
+    color: var(--text-primary);
+  }
+}
+
+.ptw-report-more {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  color: var(--text-muted);
+  font-size: 12px;
 }
 
 /* ===== Word 转 PDF：结果预览 ===== */
@@ -305,10 +363,10 @@
   flex-direction: column;
   height: 100%;
   min-height: 480px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border-light);
   border-radius: 10px;
   overflow: hidden;
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--bg-card);
 }
 
 .wordpdf-preview-head {
@@ -317,8 +375,8 @@
   gap: 8px;
   padding: 10px 14px;
   font-size: 13px;
-  color: #ccc;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--text-body);
+  border-bottom: 1px solid var(--border-light);
   flex-shrink: 0;
 
   .anticon {

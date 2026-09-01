@@ -6,6 +6,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../api/client';
 import Toolbox from './Toolbox';
+import ThemeToggle from '../components/ThemeToggle';
 import './Dashboard.less';
 
 interface Stats {
@@ -187,7 +188,10 @@ export default function Dashboard() {
       <main className="main-content">
         <header className="content-header">
           <h2>{activeTab === 'overview' ? '系统概览' : activeTab === 'users' ? '用户管理' : activeTab === 'logs' ? '登录日志' : activeTab === 'toolbox' ? '工具箱' : '个人中心'}</h2>
-          <div className="header-time">{new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' })}</div>
+          <div className="header-actions">
+            <ThemeToggle />
+            <div className="header-time">{new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' })}</div>
+          </div>
         </header>
 
         {/* 概览 */}

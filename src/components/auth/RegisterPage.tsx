@@ -4,6 +4,7 @@
 import { useState, type FormEvent } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import ParticleCanvas from './ParticleCanvas';
+import ThemeToggle from '../ThemeToggle';
 import './auth.less';
 
 interface RegisterPageProps {
@@ -86,6 +87,9 @@ export default function RegisterPage({ onSwitchToLogin }: RegisterPageProps) {
       <div className="auth-glow auth-glow-1" />
       <div className="auth-glow auth-glow-2" />
       <div className="auth-glow auth-glow-3" />
+
+      {/* 主题切换（右上角） */}
+      <ThemeToggle className="auth-theme-toggle" />
 
       <div className={`auth-card register-card ${shake ? 'shake' : ''}`}>
         <div className="auth-header">

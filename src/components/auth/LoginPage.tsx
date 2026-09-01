@@ -6,6 +6,7 @@ import { useState, type FormEvent } from 'react';
 import { useAuth, encryptPassword } from '../../context/AuthContext';
 import { api } from '../../api/client';
 import ParticleCanvas from './ParticleCanvas';
+import ThemeToggle from '../ThemeToggle';
 import './auth.less';
 
 interface LoginPageProps {
@@ -129,6 +130,9 @@ export default function LoginPage({ onSwitchToRegister }: LoginPageProps) {
       <div className="auth-glow auth-glow-1" />
       <div className="auth-glow auth-glow-2" />
       <div className="auth-glow auth-glow-3" />
+
+      {/* 主题切换（右上角） */}
+      <ThemeToggle className="auth-theme-toggle" />
 
       {/* 登录卡片 */}
       <div className={`auth-card ${shake ? 'shake' : ''}`}>
