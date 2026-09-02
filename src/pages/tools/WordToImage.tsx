@@ -1,7 +1,6 @@
 /**
  * Word 转图片工具
- * 上传 .docx，按文档原始排版完整导出为 PNG / JPG 图片。
- * 纯客户端处理：mammoth 解析 + html2canvas 渲染。
+ * 上传 .docx，通过云端 API 将文档转换为高质量图片。
  */
 import { useState } from 'react';
 import { Upload, Button, Empty, App, Radio, Tooltip } from 'antd';
@@ -15,18 +14,16 @@ import {
 } from '@ant-design/icons';
 import JSZip from 'jszip';
 import moment from 'moment';
-import { convertWordToImages } from '../../utils/wordToImages';
-import { readFileAsArrayBuffer } from '../../utils/pdfRender';
+import { api } from '../../api/client';
 import { formatBytes, downloadDataUrl } from '../../utils/imageOps';
 import './convert.less';
 
 const { Dragger } = Upload;
-const MAX_SIZE = 30 * 1024 * 1024; // 30M
+const MAX_SIZE = 30 * 1024 * 1024;
 
 const QUALITY_OPTIONS = [
-  { value: 1, label: '标准' },
-  { value: 2, label: '高清' },
-  { value: 3, label: '超清' },
+  { value: 150, label: '标准' },
+  { value: 300, label: '高清' },
 ];
 
 interface WordToImageProps {
@@ -37,23 +34,23 @@ export default function WordToImage({ onBack }: WordToImageProps) {
   const { message } = App.useApp();
   const [file, setFile] = useState<File | null>(null);
   const [images, setImages] = useState<string[]>([]);
-  const [scale, setScale] = useState(2);
+  const [dpi, setDpi] = useState(150);
   const [format, setFormat] = useState<'png' | 'jpg'>('png');
   const [converting, setConverting] = useState(false);
 
-  const doConvert = async (f: File, sc: number, fmt: 'png' | 'jpg') => {
+  const doConvert = async (f: File, d: number, fmt: 'png' | 'jpg') => {
     setConverting(true);
     try {
-      const buffer = await readFileAsArrayBuffer(f);
-      const result = await convertWordToImages(buffer, {
-        scale: sc,
-        format: fmt === 'png' ? 'image/png' : 'image/jpeg',
-        quality: 0.92,
-      });
-      setImages(result);
-      message.success(`转换完成（共 ${result.length} 张）`);
+      const resp = await api.wordToImage(f, d, fmt);
+      if (resp.success && resp.data) {
+        setImages(resp.data.images.map(b64 => `data:image/${fmt === 'jpg' ? 'jpeg' : 'png'};base64,${b64}`));
+        message.success(`转换完成（共 ${resp.data.images.length} 张）`);
+      } else {
+        message.error('转换失败：' + (resp.message || '未知错误'));
+        setImages([]);
+      }
     } catch (err: any) {
-      message.error('转换失败：' + (err?.message || '未知错误'));
+      message.error('转换失败：' + (err?.message || '网络错误'));
       setImages([]);
     } finally {
       setConverting(false);
@@ -65,7 +62,7 @@ export default function WordToImage({ onBack }: WordToImageProps) {
       f.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
       f.name.toLowerCase().endsWith('.docx');
     if (!isDocx) {
-      message.error('请上传 .docx 格式的 Word 文档（暂不支持旧版 .doc）');
+      message.error('请上传 .docx 格式的 Word 文档');
       return Upload.LIST_IGNORE;
     }
     if (f.size > MAX_SIZE) {
@@ -74,17 +71,16 @@ export default function WordToImage({ onBack }: WordToImageProps) {
     }
     setFile(f);
     setImages([]);
-    await doConvert(f, scale, format);
+    await doConvert(f, dpi, format);
     return Upload.LIST_IGNORE;
   };
 
-  // 任一选项变化 → 重新转换
-  const reconvert = (next: { scale?: number; format?: 'png' | 'jpg' }) => {
-    const sc = next.scale ?? scale;
+  const reconvert = (next: { dpi?: number; format?: 'png' | 'jpg' }) => {
+    const d = next.dpi ?? dpi;
     const fmt = next.format ?? format;
-    if (next.scale !== undefined) setScale(sc);
+    if (next.dpi !== undefined) setDpi(d);
     if (next.format !== undefined) setFormat(fmt);
-    if (file) doConvert(file, sc, fmt);
+    if (file) doConvert(file, d, fmt);
   };
 
   const handleClear = () => {
@@ -155,7 +151,7 @@ export default function WordToImage({ onBack }: WordToImageProps) {
               <InboxOutlined />
             </p>
             <p className="ant-upload-text">点击或拖拽 Word 文档（.docx）到此处</p>
-            <p className="ant-upload-hint">按 A4 页面自动分页导出为多张图片（不切断段落 / 图片），可打包 ZIP 下载，单个文件不超过 30M</p>
+            <p className="ant-upload-hint">通过云端 LibreOffice 转换为高质量图片，排版还原度 ~98%，单个文件不超过 30M</p>
           </Dragger>
         ) : (
           <>
@@ -174,8 +170,8 @@ export default function WordToImage({ onBack }: WordToImageProps) {
               <div className="opt-item">
                 <span className="opt-label">清晰度</span>
                 <Radio.Group
-                  value={scale}
-                  onChange={(e) => reconvert({ scale: e.target.value })}
+                  value={dpi}
+                  onChange={(e) => reconvert({ dpi: e.target.value })}
                   optionType="button"
                   buttonStyle="solid"
                   disabled={converting}
@@ -195,7 +191,6 @@ export default function WordToImage({ onBack }: WordToImageProps) {
                   <Radio.Button value="jpg">JPG</Radio.Button>
                 </Radio.Group>
               </div>
-
             </div>
           </>
         )}
