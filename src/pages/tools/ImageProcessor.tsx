@@ -3,7 +3,7 @@
  * 压缩（目标体积/质量档位）· 改尺寸（等比/指定尺寸）· 改格式（PNG/JPG）· 裁剪（自由/固定比例）· 旋转
  * 纯 Canvas 客户端处理，零服务器负载
  */
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Upload, Button, Tabs, InputNumber, Radio, Slider, Select, Empty, App, Tooltip, Switch } from 'antd';
 import {
   ArrowLeftOutlined,
@@ -102,6 +102,13 @@ export default function ImageProcessor({ onBack }: { onBack: () => void }) {
 
   const selected = useMemo(() => images.find((i) => i.id === selectedId) || null, [images, selectedId]);
 
+  // 切换图片或图片内容变化（如刚裁剪完）时，重置裁剪器状态，避免旧的 crop/zoom 与新图不匹配
+  useEffect(() => {
+    setCrop({ x: 0, y: 0 });
+    setZoom(1);
+    setCroppedAreaPixels(null);
+  }, [selected?.dataUrl]);
+
   // ===== 上传 =====
   const handleBeforeUpload = async (file: File) => {
     if (!file.type.startsWith('image/')) {
@@ -136,7 +143,7 @@ export default function ImageProcessor({ onBack }: { onBack: () => void }) {
 
   // ===== 批量应用（压缩/缩放/格式） =====
   const applyToAll = async (
-    fn: (el: HTMLImageElement) => Promise<OpResult>,
+    fn: (el: HTMLImageElement, originalEl: HTMLImageElement) => Promise<OpResult>,
     successMsg: string
   ) => {
     if (images.length === 0) {
@@ -147,8 +154,8 @@ export default function ImageProcessor({ onBack }: { onBack: () => void }) {
     try {
       const updated: WorkImage[] = [];
       for (const img of images) {
-        const el = await loadImage(img.dataUrl);
-        const res = await fn(el);
+        const [el, originalEl] = await Promise.all([loadImage(img.dataUrl), loadImage(img.originalDataUrl)]);
+        const res = await fn(el, originalEl);
         const ext = extOf(res.dataUrl);
         updated.push({
           ...img,
@@ -175,10 +182,11 @@ export default function ImageProcessor({ onBack }: { onBack: () => void }) {
     }, '压缩完成');
 
   const handleResize = () =>
-    applyToAll(async (el) => {
-      if (resizeMode === 'percent') return resizeByPercent(el, percent);
-      if (resizeMode === 'longedge') return resizeByLongEdge(el, longEdge);
-      return lockRatio ? resizeToFit(el, exactW, exactH) : resizeToExact(el, exactW, exactH);
+    applyToAll(async (_el, originalEl) => {
+      // 始终以原图尺寸为基准计算，重复点击结果幂等，不会越缩越小/无法恢复
+      if (resizeMode === 'percent') return resizeByPercent(originalEl, percent);
+      if (resizeMode === 'longedge') return resizeByLongEdge(originalEl, longEdge);
+      return lockRatio ? resizeToFit(originalEl, exactW, exactH) : resizeToExact(originalEl, exactW, exactH);
     }, '尺寸调整完成');
 
   const handleFormat = () =>
@@ -526,6 +534,8 @@ export default function ImageProcessor({ onBack }: { onBack: () => void }) {
                     crop={crop}
                     zoom={zoom}
                     aspect={aspectToNumber(aspectKey)}
+                    minZoom={1}
+                    maxZoom={4}
                     onCropChange={setCrop}
                     onZoomChange={setZoom}
                     onCropComplete={(_, areaPixels) => setCroppedAreaPixels(areaPixels)}
