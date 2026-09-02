@@ -1,12 +1,12 @@
 /**
  * API 客户端 - 基于 axios 封装所有后端请求
+ * 统一走 duyuxiang.cn 域名，Express 后端已合并到 Python FastAPI
  * 请求拦截器：统一附加 Authorization Token
  * 响应拦截器：统一处理错误，401 时自动刷新 Token，刷新失败则强制登出回到登录页
  */
 import axios, { AxiosError, type AxiosInstance, type InternalAxiosRequestConfig } from 'axios';
 
 const BASE_URL = 'https://duyuxiang.cn/api';
-const CLOUD_BASE_URL = 'https://duyuxiang.cn/api/v2';
 
 interface ApiResponse<T = any> {
   success: boolean;
@@ -39,7 +39,6 @@ class ApiClient {
   private isRefreshing = false;
   private refreshSubscribers: { resolve: (token: string) => void; reject: (err: Error) => void }[] = [];
   private http: AxiosInstance;
-  private cloud: AxiosInstance;
 
   constructor() {
     this.accessToken = localStorage.getItem('accessToken');
@@ -47,16 +46,10 @@ class ApiClient {
 
     this.http = axios.create({
       baseURL: BASE_URL,
-      timeout: 60000,
+      timeout: 300000,
     });
     this.http.interceptors.request.use(this.onRequest);
     this.http.interceptors.response.use((resp) => resp, this.onResponseError);
-
-    this.cloud = axios.create({
-      baseURL: CLOUD_BASE_URL,
-      timeout: 300000,
-    });
-    this.cloud.interceptors.request.use(this.onRequest);
   }
 
   // ===== Token 管理 =====
@@ -100,7 +93,6 @@ class ApiClient {
     const body = await this.parseErrorBody(error);
 
     if (status === 401 && config && !config._retried && !this.isAuthRequest(config.url)) {
-      // Token 过期且有 Refresh Token：静默刷新后重试原请求
       if (body?.code === 'TOKEN_EXPIRED' && this.refreshToken) {
         try {
           const newToken = await this.refreshAccessToken();
@@ -111,7 +103,6 @@ class ApiClient {
           // 刷新失败，走下方强制登出
         }
       }
-      // 其他 401（无 Token / Token 无效 / 刷新失败）：强制登出，回到登录页
       this.forceLogout();
     }
 
@@ -148,7 +139,6 @@ class ApiClient {
 
     this.isRefreshing = true;
     return new Promise<string>((resolve, reject) => {
-      // 使用独立 axios 实例，避免触发自身拦截器
       axios
         .post<ApiResponse<{ accessToken: string; refreshToken: string }>>(`${BASE_URL}/auth/refresh`, {
           refreshToken: this.refreshToken,
@@ -189,7 +179,7 @@ class ApiClient {
     window.dispatchEvent(new Event('auth:logout'));
   }
 
-  // ===== 核心请求方法（统一返回 ApiResponse，不抛异常） =====
+  // ===== 核心请求方法 =====
 
   private async request<T>(config: { method: string; url: string; data?: any }): Promise<ApiResponse<T>> {
     try {
@@ -216,16 +206,12 @@ class ApiClient {
     return this.request<T>({ method: 'DELETE', url: endpoint });
   }
 
-  /**
-   * 文件上传（FormData），走统一拦截器
-   */
   upload<T>(endpoint: string, formData: FormData) {
     return this.request<T>({ method: 'POST', url: endpoint, data: formData });
   }
 
   /**
-   * 二进制下载（如视频压缩结果），支持取消与下载进度
-   * 失败时抛出 ApiError，由调用方处理
+   * 二进制下载（如视频压缩/PDF转换结果），支持取消与下载进度
    */
   async download(
     endpoint: string,
@@ -238,7 +224,7 @@ class ApiClient {
         url: endpoint,
         data: formData,
         responseType: 'blob',
-        timeout: 0, // 大文件处理不超时
+        timeout: 0,
         signal: options.signal,
         onDownloadProgress: (e) => {
           options.onProgress?.(e.loaded, e.total ?? 0);
@@ -250,27 +236,26 @@ class ApiClient {
       };
     } catch (err: any) {
       if (axios.isCancel(err)) {
-        const abortErr = new DOMException('The operation was aborted.', 'AbortError');
-        throw abortErr;
+        throw new DOMException('The operation was aborted.', 'AbortError');
       }
       throw err;
     }
   }
 
-  // ===== 云端 Python API =====
+  // ===== 处理端点（/v2 前缀） =====
 
   async wordToImage(file: File, dpi: number, format: string): Promise<ApiResponse<{ images: string[] }>> {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('dpi', String(dpi));
     formData.append('format', format);
-    return this.cloudRequest<{ images: string[] }>({ method: 'POST', url: '/word-to-image', data: formData });
+    return this.request<{ images: string[] }>({ method: 'POST', url: '/v2/word-to-image', data: formData });
   }
 
   async wordToPdf(file: File): Promise<{ blob: Blob; filename: string }> {
     const formData = new FormData();
     formData.append('file', file);
-    const resp = await this.cloud.post('/word-to-pdf', formData, { responseType: 'blob', timeout: 0 });
+    const resp = await this.http.post('/v2/word-to-pdf', formData, { responseType: 'blob', timeout: 0 });
     const cd = resp.headers['content-disposition'] || '';
     const match = cd.match(/filename\*?=(?:UTF-8'')?([^;\s]+)/i);
     const filename = match ? decodeURIComponent(match[1]) : file.name.replace(/\.docx$/i, '.pdf');
@@ -281,30 +266,18 @@ class ApiClient {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('lang', lang);
-    return this.cloudRequest<{ text: string; confidence: number }>({ method: 'POST', url: '/ocr', data: formData });
+    return this.request<{ text: string; confidence: number }>({ method: 'POST', url: '/v2/ocr', data: formData });
   }
 
   async pdfToWord(file: File, mode: string): Promise<{ blob: Blob; filename: string }> {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('mode', mode);
-    const resp = await this.cloud.post('/pdf-to-word', formData, { responseType: 'blob', timeout: 0 });
+    const resp = await this.http.post('/v2/pdf-to-word', formData, { responseType: 'blob', timeout: 0 });
     const cd = resp.headers['content-disposition'] || '';
     const match = cd.match(/filename\*?=(?:UTF-8'')?([^;\s]+)/i);
     const filename = match ? decodeURIComponent(match[1]) : file.name.replace(/\.pdf$/i, '.docx');
     return { blob: resp.data as Blob, filename };
-  }
-
-  private async cloudRequest<T>(config: { method: string; url: string; data?: any }): Promise<ApiResponse<T>> {
-    try {
-      const resp = await this.cloud.request<ApiResponse<T>>(config);
-      return resp.data;
-    } catch (err: any) {
-      const status = err.response?.status;
-      const body = err.response?.data;
-      const message = typeof body === 'string' ? body : body?.detail || body?.message || err.message || '网络请求失败';
-      return { success: false, message, code: String(status) };
-    }
   }
 }
 
