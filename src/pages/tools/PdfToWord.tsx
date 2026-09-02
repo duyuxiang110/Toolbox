@@ -5,7 +5,7 @@
  * - 图片还原：PDF 每页渲染为图片嵌入 Word
  * 通过云端 Python API 处理。
  */
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Upload, Button, Empty, App, Radio, Tooltip } from 'antd';
 import {
   ArrowLeftOutlined,
@@ -13,6 +13,7 @@ import {
   FilePdfOutlined,
   FileWordOutlined,
   DeleteOutlined,
+  StopOutlined,
 } from '@ant-design/icons';
 import moment from 'moment';
 import { api } from '../../api/client';
@@ -37,6 +38,25 @@ export default function PdfToWord({ onBack }: PdfToWordProps) {
   const [file, setFile] = useState<File | null>(null);
   const [mode, setMode] = useState<ConvertMode>('text');
   const [generating, setGenerating] = useState(false);
+  const abortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    return () => {
+      abortRef.current?.abort();
+    };
+  }, []);
+
+  const handleBack = () => {
+    abortRef.current?.abort();
+    onBack();
+  };
+
+  const handleCancel = () => {
+    abortRef.current?.abort();
+    abortRef.current = null;
+    setGenerating(false);
+    message.info('已取消转换');
+  };
 
   const handleBeforeUpload = async (f: File) => {
     if (f.type !== 'application/pdf' && !f.name.toLowerCase().endsWith('.pdf')) {
@@ -58,29 +78,40 @@ export default function PdfToWord({ onBack }: PdfToWordProps) {
     }
     const baseName = file.name.replace(/\.pdf$/i, '') || 'PDF转Word';
     const stamp = moment().format('YYYYMMDD_HHmmss');
+    const controller = new AbortController();
+    abortRef.current = controller;
     setGenerating(true);
     try {
-      const { blob, filename } = await api.pdfToWord(file, mode);
+      const { blob, filename } = await api.pdfToWord(file, mode, controller.signal);
       downloadBlob(blob, filename);
       message.success(`已导出 Word（${mode === 'text' ? '可编辑文本' : '图片还原'}）`);
     } catch (err: any) {
-      message.error('转换失败：' + (err?.message || '网络错误'));
+      if (err.name !== 'AbortError') {
+        message.error('转换失败：' + (err?.message || '网络错误'));
+      }
     } finally {
       setGenerating(false);
+      abortRef.current = null;
     }
   };
 
   const handleClear = () => {
+    abortRef.current?.abort();
     setFile(null);
   };
 
   return (
     <div className="convert-tool">
       <div className="convert-toolbar">
-        <Button type="text" icon={<ArrowLeftOutlined />} onClick={onBack}>
+        <Button type="text" icon={<ArrowLeftOutlined />} onClick={handleBack}>
           返回工具箱
         </Button>
         <div className="convert-toolbar-right">
+          {generating && (
+            <Button danger icon={<StopOutlined />} onClick={handleCancel}>
+              取消转换
+            </Button>
+          )}
           {file && (
             <Button icon={<DeleteOutlined />} onClick={handleClear}>
               重新选择

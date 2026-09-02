@@ -3,7 +3,7 @@
  * 通过云端 PaddleOCR 识别图片中的中英文文字，识别率 95%+
  * 双栏工作台布局：左侧图片输入 → 右侧识别结果
  */
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Upload, Button, Select, Empty, App, Tooltip } from 'antd';
 import {
   ArrowLeftOutlined,
@@ -12,6 +12,7 @@ import {
   DeleteOutlined,
   ReloadOutlined,
   PictureOutlined,
+  StopOutlined,
 } from '@ant-design/icons';
 import { api } from '../../api/client';
 import './OcrTool.less';
@@ -47,6 +48,26 @@ export default function OcrTool({ onBack }: OcrToolProps) {
   const [result, setResult] = useState('');
   const [elapsed, setElapsed] = useState(0);
   const [confidence, setConfidence] = useState<number | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    return () => {
+      abortRef.current?.abort();
+    };
+  }, []);
+
+  const handleBack = () => {
+    abortRef.current?.abort();
+    onBack();
+  };
+
+  const handleCancel = () => {
+    abortRef.current?.abort();
+    abortRef.current = null;
+    setRecognizing(false);
+    setStatusText('');
+    message.info('已取消识别');
+  };
 
   const readImage = (file: File): Promise<OcrImage> =>
     new Promise((resolve, reject) => {
@@ -88,6 +109,8 @@ export default function OcrTool({ onBack }: OcrToolProps) {
       message.warning('请先上传图片');
       return;
     }
+    const controller = new AbortController();
+    abortRef.current = controller;
     setRecognizing(true);
     setResult('');
     setConfidence(null);
@@ -95,7 +118,7 @@ export default function OcrTool({ onBack }: OcrToolProps) {
     const start = Date.now();
 
     try {
-      const resp = await api.ocr(image.file, lang);
+      const resp = await api.ocr(image.file, lang, controller.signal);
       if (resp.success && resp.data) {
         setResult(resp.data.text);
         setConfidence(resp.data.confidence);
@@ -105,14 +128,17 @@ export default function OcrTool({ onBack }: OcrToolProps) {
         } else {
           message.info('未识别到文字，请尝试更清晰的图片');
         }
-      } else {
+      } else if (resp.code !== 'CANCELED') {
         message.error('识别失败：' + (resp.message || '未知错误'));
       }
     } catch (err: any) {
-      message.error('识别失败：' + (err?.message || '网络错误'));
+      if (err.name !== 'AbortError') {
+        message.error('识别失败：' + (err?.message || '网络错误'));
+      }
     } finally {
       setRecognizing(false);
       setStatusText('');
+      abortRef.current = null;
     }
   };
 
@@ -136,7 +162,7 @@ export default function OcrTool({ onBack }: OcrToolProps) {
   return (
     <div className="ocr-tool">
       <div className="ocr-toolbar">
-        <Button type="text" icon={<ArrowLeftOutlined />} onClick={onBack}>
+        <Button type="text" icon={<ArrowLeftOutlined />} onClick={handleBack}>
           返回工具箱
         </Button>
         <div className="ocr-toolbar-right">
@@ -148,15 +174,20 @@ export default function OcrTool({ onBack }: OcrToolProps) {
             style={{ width: 150 }}
             popupMatchSelectWidth={false}
           />
-          <Button
-            type="primary"
-            icon={<ScanOutlined />}
-            loading={recognizing}
-            onClick={handleRecognize}
-            disabled={!image}
-          >
-            {recognizing ? '识别中' : '开始识别'}
-          </Button>
+          {recognizing ? (
+            <Button danger icon={<StopOutlined />} onClick={handleCancel}>
+              取消识别
+            </Button>
+          ) : (
+            <Button
+              type="primary"
+              icon={<ScanOutlined />}
+              onClick={handleRecognize}
+              disabled={!image}
+            >
+              开始识别
+            </Button>
+          )}
         </div>
       </div>
 

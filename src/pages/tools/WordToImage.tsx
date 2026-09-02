@@ -2,7 +2,7 @@
  * Word 转图片工具
  * 上传 .docx，通过云端 API 将文档转换为高质量图片。
  */
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Upload, Button, Empty, App, Radio, Tooltip } from 'antd';
 import {
   ArrowLeftOutlined,
@@ -11,6 +11,7 @@ import {
   PictureOutlined,
   DeleteOutlined,
   DownloadOutlined,
+  StopOutlined,
 } from '@ant-design/icons';
 import JSZip from 'jszip';
 import moment from 'moment';
@@ -37,23 +38,48 @@ export default function WordToImage({ onBack }: WordToImageProps) {
   const [dpi, setDpi] = useState(150);
   const [format, setFormat] = useState<'png' | 'jpg'>('png');
   const [converting, setConverting] = useState(false);
+  const abortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    return () => {
+      abortRef.current?.abort();
+    };
+  }, []);
+
+  const handleBack = () => {
+    abortRef.current?.abort();
+    onBack();
+  };
+
+  const handleCancel = () => {
+    abortRef.current?.abort();
+    abortRef.current = null;
+    setConverting(false);
+    message.info('已取消转换');
+  };
 
   const doConvert = async (f: File, d: number, fmt: 'png' | 'jpg') => {
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
     setConverting(true);
     try {
-      const resp = await api.wordToImage(f, d, fmt);
+      const resp = await api.wordToImage(f, d, fmt, controller.signal);
       if (resp.success && resp.data) {
         setImages(resp.data.images.map(b64 => `data:image/${fmt === 'jpg' ? 'jpeg' : 'png'};base64,${b64}`));
         message.success(`转换完成（共 ${resp.data.images.length} 张）`);
-      } else {
+      } else if (resp.code !== 'CANCELED') {
         message.error('转换失败：' + (resp.message || '未知错误'));
         setImages([]);
       }
     } catch (err: any) {
-      message.error('转换失败：' + (err?.message || '网络错误'));
-      setImages([]);
+      if (err.name !== 'AbortError') {
+        message.error('转换失败：' + (err?.message || '网络错误'));
+        setImages([]);
+      }
     } finally {
       setConverting(false);
+      abortRef.current = null;
     }
   };
 
@@ -84,6 +110,7 @@ export default function WordToImage({ onBack }: WordToImageProps) {
   };
 
   const handleClear = () => {
+    abortRef.current?.abort();
     setFile(null);
     setImages([]);
   };
@@ -119,10 +146,15 @@ export default function WordToImage({ onBack }: WordToImageProps) {
   return (
     <div className="convert-tool">
       <div className="convert-toolbar">
-        <Button type="text" icon={<ArrowLeftOutlined />} onClick={onBack}>
+        <Button type="text" icon={<ArrowLeftOutlined />} onClick={handleBack}>
           返回工具箱
         </Button>
         <div className="convert-toolbar-right">
+          {converting && (
+            <Button danger icon={<StopOutlined />} onClick={handleCancel}>
+              取消转换
+            </Button>
+          )}
           {file && (
             <Button icon={<DeleteOutlined />} onClick={handleClear}>
               重新选择

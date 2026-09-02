@@ -181,11 +181,14 @@ class ApiClient {
 
   // ===== 核心请求方法 =====
 
-  private async request<T>(config: { method: string; url: string; data?: any }): Promise<ApiResponse<T>> {
+  private async request<T>(config: { method: string; url: string; data?: any; signal?: AbortSignal }): Promise<ApiResponse<T>> {
     try {
       const resp = await this.http.request<ApiResponse<T>>(config);
       return resp.data;
     } catch (err: any) {
+      if (err.code === 'ERR_CANCELED' || err.name === 'CanceledError') {
+        return { success: false, message: '已取消', code: 'CANCELED' };
+      }
       return { success: false, message: err.message || '网络连接失败，请检查服务是否启动', code: err.code };
     }
   }
@@ -206,8 +209,8 @@ class ApiClient {
     return this.request<T>({ method: 'DELETE', url: endpoint });
   }
 
-  upload<T>(endpoint: string, formData: FormData) {
-    return this.request<T>({ method: 'POST', url: endpoint, data: formData });
+  upload<T>(endpoint: string, formData: FormData, signal?: AbortSignal) {
+    return this.request<T>({ method: 'POST', url: endpoint, data: formData, signal });
   }
 
   /**
@@ -244,40 +247,54 @@ class ApiClient {
 
   // ===== 处理端点（/v2 前缀） =====
 
-  async wordToImage(file: File, dpi: number, format: string): Promise<ApiResponse<{ images: string[] }>> {
+  async wordToImage(file: File, dpi: number, format: string, signal?: AbortSignal): Promise<ApiResponse<{ images: string[] }>> {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('dpi', String(dpi));
     formData.append('format', format);
-    return this.request<{ images: string[] }>({ method: 'POST', url: '/v2/word-to-image', data: formData });
+    return this.request<{ images: string[] }>({ method: 'POST', url: '/v2/word-to-image', data: formData, signal });
   }
 
-  async wordToPdf(file: File): Promise<{ blob: Blob; filename: string }> {
+  async wordToPdf(file: File, signal?: AbortSignal): Promise<{ blob: Blob; filename: string }> {
     const formData = new FormData();
     formData.append('file', file);
-    const resp = await this.http.post('/v2/word-to-pdf', formData, { responseType: 'blob', timeout: 0 });
-    const cd = resp.headers['content-disposition'] || '';
-    const match = cd.match(/filename\*?=(?:UTF-8'')?([^;\s]+)/i);
-    const filename = match ? decodeURIComponent(match[1]) : file.name.replace(/\.docx$/i, '.pdf');
-    return { blob: resp.data as Blob, filename };
+    try {
+      const resp = await this.http.post('/v2/word-to-pdf', formData, { responseType: 'blob', timeout: 0, signal });
+      const cd = resp.headers['content-disposition'] || '';
+      const match = cd.match(/filename\*?=(?:UTF-8'')?([^;\s]+)/i);
+      const filename = match ? decodeURIComponent(match[1]) : file.name.replace(/\.docx$/i, '.pdf');
+      return { blob: resp.data as Blob, filename };
+    } catch (err: any) {
+      if (err.code === 'ERR_CANCELED' || err.name === 'CanceledError') {
+        throw new DOMException('The operation was aborted.', 'AbortError');
+      }
+      throw err;
+    }
   }
 
-  async ocr(file: File, lang: string): Promise<ApiResponse<{ text: string; confidence: number }>> {
+  async ocr(file: File, lang: string, signal?: AbortSignal): Promise<ApiResponse<{ text: string; confidence: number }>> {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('lang', lang);
-    return this.request<{ text: string; confidence: number }>({ method: 'POST', url: '/v2/ocr', data: formData });
+    return this.request<{ text: string; confidence: number }>({ method: 'POST', url: '/v2/ocr', data: formData, signal });
   }
 
-  async pdfToWord(file: File, mode: string): Promise<{ blob: Blob; filename: string }> {
+  async pdfToWord(file: File, mode: string, signal?: AbortSignal): Promise<{ blob: Blob; filename: string }> {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('mode', mode);
-    const resp = await this.http.post('/v2/pdf-to-word', formData, { responseType: 'blob', timeout: 0 });
-    const cd = resp.headers['content-disposition'] || '';
-    const match = cd.match(/filename\*?=(?:UTF-8'')?([^;\s]+)/i);
-    const filename = match ? decodeURIComponent(match[1]) : file.name.replace(/\.pdf$/i, '.docx');
-    return { blob: resp.data as Blob, filename };
+    try {
+      const resp = await this.http.post('/v2/pdf-to-word', formData, { responseType: 'blob', timeout: 0, signal });
+      const cd = resp.headers['content-disposition'] || '';
+      const match = cd.match(/filename\*?=(?:UTF-8'')?([^;\s]+)/i);
+      const filename = match ? decodeURIComponent(match[1]) : file.name.replace(/\.pdf$/i, '.docx');
+      return { blob: resp.data as Blob, filename };
+    } catch (err: any) {
+      if (err.code === 'ERR_CANCELED' || err.name === 'CanceledError') {
+        throw new DOMException('The operation was aborted.', 'AbortError');
+      }
+      throw err;
+    }
   }
 }
 

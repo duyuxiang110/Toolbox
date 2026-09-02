@@ -3,7 +3,7 @@
  * 上传视频 → 选择目标格式 / 压缩质量 / 分辨率 → 服务端 ffmpeg 压缩 → 下载结果
  * 支持格式转换：MP4 / WebM / AVI / MOV / MKV / GIF
  */
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Upload, Button, Empty, App, Radio, Tooltip, Progress, Select } from 'antd';
 import {
   ArrowLeftOutlined,
@@ -12,6 +12,7 @@ import {
   DeleteOutlined,
   CompressOutlined,
   DownloadOutlined,
+  StopOutlined,
 } from '@ant-design/icons';
 import { formatBytes } from '../../utils/imageOps';
 import { api } from '../../api/client';
@@ -73,7 +74,28 @@ export default function VideoCompress({ onBack }: VideoCompressProps) {
   const [progress, setProgress] = useState(0);
   const [resultSize, setResultSize] = useState<number | null>(null);
   const [resultBlob, setResultBlob] = useState<Blob | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    return () => {
+      abortRef.current?.abort();
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+  }, []);
+
+  const handleBack = () => {
+    abortRef.current?.abort();
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    onBack();
+  };
+
+  const handleCancel = () => {
+    abortRef.current?.abort();
+    abortRef.current = null;
+    setCompressing(false);
+    message.info('已取消压缩');
+  };
 
   // 上传后获取视频信息
   const handleBeforeUpload = async (f: File) => {
@@ -113,6 +135,10 @@ export default function VideoCompress({ onBack }: VideoCompressProps) {
     setProgress(0);
     setResultBlob(null);
     setResultSize(null);
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+      setPreviewUrl(null);
+    }
 
     const controller = new AbortController();
     abortRef.current = controller;
@@ -138,6 +164,7 @@ export default function VideoCompress({ onBack }: VideoCompressProps) {
       setResultBlob(blob);
       setResultSize(blob.size);
       setProgress(100);
+      setPreviewUrl(URL.createObjectURL(blob));
       message.success('压缩完成，可下载结果');
     } catch (err: any) {
       if (err.name === 'AbortError') {
@@ -173,6 +200,10 @@ export default function VideoCompress({ onBack }: VideoCompressProps) {
     setResultBlob(null);
     setResultSize(null);
     setProgress(0);
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+      setPreviewUrl(null);
+    }
   };
 
   const compressRatio =
@@ -181,10 +212,15 @@ export default function VideoCompress({ onBack }: VideoCompressProps) {
   return (
     <div className="convert-tool">
       <div className="convert-toolbar">
-        <Button type="text" icon={<ArrowLeftOutlined />} onClick={onBack}>
+        <Button type="text" icon={<ArrowLeftOutlined />} onClick={handleBack}>
           返回工具箱
         </Button>
         <div className="convert-toolbar-right">
+          {compressing && (
+            <Button danger icon={<StopOutlined />} onClick={handleCancel}>
+              取消压缩
+            </Button>
+          )}
           {file && (
             <Button icon={<DeleteOutlined />} onClick={handleClear}>
               重新选择
@@ -317,7 +353,7 @@ export default function VideoCompress({ onBack }: VideoCompressProps) {
               <video
                 controls
                 style={{ maxWidth: '100%', maxHeight: 420, borderRadius: 8, background: '#000' }}
-                src={URL.createObjectURL(resultBlob)}
+                src={previewUrl || undefined}
               />
               <div style={{ marginTop: 8, color: '#888', fontSize: 12 }}>压缩结果预览</div>
             </div>
