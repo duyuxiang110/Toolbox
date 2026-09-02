@@ -171,6 +171,25 @@
   }
 }
 
+/* PDF 转 Word：上传后逐页缩略图预览 */
+.pdf-thumb-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+
+  .result-img {
+    max-width: 360px;
+    width: 100%;
+  }
+
+  .pdf-thumb-num {
+    color: var(--text-muted);
+    font-size: 12px;
+  }
+}
+
 /* ===== PDF 拆分：页面缩略图网格 ===== */
 .split-grid {
   display: grid;

@@ -6,7 +6,7 @@
  * 通过云端 Python API 处理。
  */
 import { useState, useRef, useEffect } from 'react';
-import { Upload, Button, Empty, App, Radio, Tooltip } from 'antd';
+import { Upload, Button, Empty, App, Radio, Tooltip, Spin } from 'antd';
 import {
   ArrowLeftOutlined,
   InboxOutlined,
@@ -15,8 +15,8 @@ import {
   DeleteOutlined,
   StopOutlined,
 } from '@ant-design/icons';
-import moment from 'moment';
 import { api } from '../../api/client';
+import { renderPdfPages, readFileAsArrayBuffer, type RenderedPage } from '../../utils/pdfRender';
 import { formatBytes, downloadBlob } from '../../utils/imageOps';
 import './convert.less';
 
@@ -38,6 +38,9 @@ export default function PdfToWord({ onBack }: PdfToWordProps) {
   const [file, setFile] = useState<File | null>(null);
   const [mode, setMode] = useState<ConvertMode>('text');
   const [generating, setGenerating] = useState(false);
+  const [pages, setPages] = useState<RenderedPage[]>([]);
+  const [rendering, setRendering] = useState(false);
+  const [previewProgress, setPreviewProgress] = useState('');
   const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
@@ -58,6 +61,29 @@ export default function PdfToWord({ onBack }: PdfToWordProps) {
     message.info('已取消转换');
   };
 
+  // 上传后逐页渲染缩略图预览（与 PDF 拆分/转 PPT 一致）
+  const renderThumbs = async (f: File) => {
+    setRendering(true);
+    setPreviewProgress('正在解析 PDF…');
+    try {
+      const buffer = await readFileAsArrayBuffer(f);
+      const rendered = await renderPdfPages(buffer, {
+        scale: 1,
+        maxEdge: 360,
+        format: 'image/jpeg',
+        quality: 0.7,
+        onProgress: (done, t) => setPreviewProgress(`正在生成预览 ${done}/${t}`),
+      });
+      setPages(rendered);
+    } catch (err: any) {
+      message.error('PDF 解析失败：' + (err?.message || '未知错误'));
+      setPages([]);
+    } finally {
+      setRendering(false);
+      setPreviewProgress('');
+    }
+  };
+
   const handleBeforeUpload = async (f: File) => {
     if (f.type !== 'application/pdf' && !f.name.toLowerCase().endsWith('.pdf')) {
       message.error('请上传 PDF 文件');
@@ -68,6 +94,8 @@ export default function PdfToWord({ onBack }: PdfToWordProps) {
       return Upload.LIST_IGNORE;
     }
     setFile(f);
+    setPages([]);
+    await renderThumbs(f);
     return Upload.LIST_IGNORE;
   };
 
@@ -76,8 +104,6 @@ export default function PdfToWord({ onBack }: PdfToWordProps) {
       message.warning('请先上传 PDF');
       return;
     }
-    const baseName = file.name.replace(/\.pdf$/i, '') || 'PDF转Word';
-    const stamp = moment().format('YYYYMMDD_HHmmss');
     const controller = new AbortController();
     abortRef.current = controller;
     setGenerating(true);
@@ -98,6 +124,7 @@ export default function PdfToWord({ onBack }: PdfToWordProps) {
   const handleClear = () => {
     abortRef.current?.abort();
     setFile(null);
+    setPages([]);
   };
 
   return (
@@ -152,7 +179,10 @@ export default function PdfToWord({ onBack }: PdfToWordProps) {
               <Tooltip title={file.name}>
                 <span className="fi-name">{file.name}</span>
               </Tooltip>
-              <span className="fi-meta">{formatBytes(file.size)}</span>
+              <span className="fi-meta">
+                {formatBytes(file.size)}
+                {rendering ? ' · 读取中…' : pages.length > 0 ? ` · ${pages.length} 页` : ''}
+              </span>
             </div>
 
             <div className="convert-options">
@@ -180,7 +210,24 @@ export default function PdfToWord({ onBack }: PdfToWordProps) {
 
         <div className="convert-preview">
           {generating ? (
-            <Empty description="正在服务器端转换…" className="convert-empty" />
+            <div style={{ textAlign: 'center', padding: '40px 0' }}>
+              <Spin size="large" />
+              <div style={{ color: '#888', marginTop: 16 }}>正在服务器端转换…</div>
+              <div style={{ color: '#aaa', fontSize: 12, marginTop: 4 }}>
+                {mode === 'text' ? 'pdfplumber 提取文本中' : '逐页渲染图片中'}，大文件可能需要较长时间
+              </div>
+            </div>
+          ) : rendering ? (
+            <Empty description={previewProgress || '处理中…'} className="convert-empty" />
+          ) : pages.length > 0 ? (
+            <div className="convert-result-imgs">
+              {pages.map((pg) => (
+                <div key={pg.pageNum} className="pdf-thumb-card">
+                  <img src={pg.dataUrl} alt={`第 ${pg.pageNum} 页`} className="result-img" />
+                  <span className="pdf-thumb-num">第 {pg.pageNum} 页</span>
+                </div>
+              ))}
+            </div>
           ) : file ? (
             <Empty
               description={`已选择 ${mode === 'text' ? '可编辑文本' : '图片还原'} 模式，点击「导出 Word」开始转换`}
