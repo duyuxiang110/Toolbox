@@ -6,6 +6,7 @@
 import axios, { AxiosError, type AxiosInstance, type InternalAxiosRequestConfig } from 'axios';
 
 const BASE_URL = 'http://127.0.0.1:3900/api';
+const CLOUD_BASE_URL = 'http://114.55.11.191/api/v2';
 
 interface ApiResponse<T = any> {
   success: boolean;
@@ -38,6 +39,7 @@ class ApiClient {
   private isRefreshing = false;
   private refreshSubscribers: { resolve: (token: string) => void; reject: (err: Error) => void }[] = [];
   private http: AxiosInstance;
+  private cloud: AxiosInstance;
 
   constructor() {
     this.accessToken = localStorage.getItem('accessToken');
@@ -49,6 +51,12 @@ class ApiClient {
     });
     this.http.interceptors.request.use(this.onRequest);
     this.http.interceptors.response.use((resp) => resp, this.onResponseError);
+
+    this.cloud = axios.create({
+      baseURL: CLOUD_BASE_URL,
+      timeout: 120000,
+    });
+    this.cloud.interceptors.request.use(this.onRequest);
   }
 
   // ===== Token 管理 =====
@@ -246,6 +254,56 @@ class ApiClient {
         throw abortErr;
       }
       throw err;
+    }
+  }
+
+  // ===== 云端 Python API =====
+
+  async wordToImage(file: File, dpi: number, format: string): Promise<ApiResponse<{ images: string[] }>> {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('dpi', String(dpi));
+    formData.append('format', format);
+    return this.cloudRequest<{ images: string[] }>({ method: 'POST', url: '/word-to-image', data: formData });
+  }
+
+  async wordToPdf(file: File): Promise<{ blob: Blob; filename: string }> {
+    const formData = new FormData();
+    formData.append('file', file);
+    const resp = await this.cloud.post('/word-to-pdf', formData, { responseType: 'blob', timeout: 0 });
+    const cd = resp.headers['content-disposition'] || '';
+    const match = cd.match(/filename\*?=(?:UTF-8'')?([^;\s]+)/i);
+    const filename = match ? decodeURIComponent(match[1]) : file.name.replace(/\.docx$/i, '.pdf');
+    return { blob: resp.data as Blob, filename };
+  }
+
+  async ocr(file: File, lang: string): Promise<ApiResponse<{ text: string; confidence: number }>> {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('lang', lang);
+    return this.cloudRequest<{ text: string; confidence: number }>({ method: 'POST', url: '/ocr', data: formData });
+  }
+
+  async pdfToWord(file: File, mode: string): Promise<{ blob: Blob; filename: string }> {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('mode', mode);
+    const resp = await this.cloud.post('/pdf-to-word', formData, { responseType: 'blob', timeout: 0 });
+    const cd = resp.headers['content-disposition'] || '';
+    const match = cd.match(/filename\*?=(?:UTF-8'')?([^;\s]+)/i);
+    const filename = match ? decodeURIComponent(match[1]) : file.name.replace(/\.pdf$/i, '.docx');
+    return { blob: resp.data as Blob, filename };
+  }
+
+  private async cloudRequest<T>(config: { method: string; url: string; data?: any }): Promise<ApiResponse<T>> {
+    try {
+      const resp = await this.cloud.request<ApiResponse<T>>(config);
+      return resp.data;
+    } catch (err: any) {
+      const status = err.response?.status;
+      const body = err.response?.data;
+      const message = typeof body === 'string' ? body : body?.detail || body?.message || err.message || '网络请求失败';
+      return { success: false, message, code: String(status) };
     }
   }
 }
