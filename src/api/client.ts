@@ -54,7 +54,7 @@ class ApiClient {
 
     this.cloud = axios.create({
       baseURL: CLOUD_BASE_URL,
-      timeout: 120000,
+      timeout: 300000,
     });
     this.cloud.interceptors.request.use(this.onRequest);
   }

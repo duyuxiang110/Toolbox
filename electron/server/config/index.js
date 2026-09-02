@@ -5,7 +5,7 @@
 module.exports = {
   // MySQL 数据库配置（阿里云服务器）
   db: {
-    host: 'duyuxiang.cn',
+    host: '114.55.11.191',
     port: 3306,
     user: 'root',
     password: 'Abc3622490', // 请修改为你的MySQL密码
