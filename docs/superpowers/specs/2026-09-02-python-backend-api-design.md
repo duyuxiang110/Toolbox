@@ -40,8 +40,20 @@ Electron 桌面端（React 前端）
 
 ### 目录结构
 
+**本地开发目录**（独立项目，不在灵光 Electron 项目内）：
+
 ```
-/opt/lingguang-api/
+/Users/duyuxiang/Desktop/灵光-api/       ← 本地 Python 项目（独立）
+├── app/
+├── requirements.txt
+├── .gitignore
+└── README.md
+```
+
+**服务器部署目录**：
+
+```
+/opt/lingguang-api/                     ← 服务器部署路径
 ├── app/
 │   ├── main.py                # FastAPI 入口，CORS / 路由挂载 / 启动时预加载 PaddleOCR
 │   ├── config.py              # 配置：上传目录、文件大小限制、JWT 密钥
