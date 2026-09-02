@@ -20,3 +20,9 @@
   ssh root@114.55.11.191 'cd /var/www/lingguang/downloads && ls'   # 先看有哪些
   # 确认后删旧版本：
   ssh root@114.55.11.191 'rm /var/www/lingguang/downloads/LingGuang-1.0.1-*.dmg'
+
+
+（1）你改了什么	（2）属于	（3）要做什么
+1.改了 landing/ 里的页面、样式、文案	2.官网迭代	3.直接 ./deploy.sh，不用改版本号、不用打包
+1.改了 electron/ 或根目录 src/（比如加个新工具、修 OCR bug）	2.主应用迭代	3.改版本号 → npm run electron:build:mac → ./deploy.sh
+1.两边都改了	2.都算	3.按主应用的完整流程走
