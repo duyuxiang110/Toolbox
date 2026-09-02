@@ -1,7 +1,6 @@
 const { app, BrowserWindow, ipcMain, Notification, Tray, Menu, nativeImage } = require("electron");
 const path = require("path");
 const si = require("systeminformation");
-const { startServer, stopServer } = require("./server");
 
 const isDev = !app.isPackaged;
 
@@ -113,14 +112,6 @@ function createTray() {
 }
 
 app.whenReady().then(async () => {
-  // 启动内置 SSO API 服务器
-  try {
-    await startServer();
-    console.log('[Main] SSO 后端服务已就绪');
-  } catch (err) {
-    console.error('[Main] SSO 后端启动失败:', err.message);
-  }
-
   createWindow();
   createTray();
 
@@ -134,15 +125,6 @@ app.whenReady().then(async () => {
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
     app.quit();
-  }
-});
-
-// 应用退出前关闭服务器
-app.on('before-quit', async () => {
-  try {
-    await stopServer();
-  } catch (e) {
-    // 忽略关闭时的错误
   }
 });
 

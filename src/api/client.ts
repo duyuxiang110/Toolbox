@@ -5,7 +5,7 @@
  */
 import axios, { AxiosError, type AxiosInstance, type InternalAxiosRequestConfig } from 'axios';
 
-const BASE_URL = 'http://127.0.0.1:3900/api';
+const BASE_URL = 'https://duyuxiang.cn/api';
 const CLOUD_BASE_URL = 'https://duyuxiang.cn/api/v2';
 
 interface ApiResponse<T = any> {
@@ -47,7 +47,7 @@ class ApiClient {
 
     this.http = axios.create({
       baseURL: BASE_URL,
-      timeout: 30000,
+      timeout: 60000,
     });
     this.http.interceptors.request.use(this.onRequest);
     this.http.interceptors.response.use((resp) => resp, this.onResponseError);
