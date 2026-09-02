@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # 日常一键部署：构建官网 -> 校验 dmg -> rsync 上传 -> 重载 nginx -> 自检
 set -euo pipefail
-REMOTE="${REMOTE:-root@114.55.11.191}"
+REMOTE="${REMOTE:-admin@duyuxiang.cn}"
 HERE="$(cd "$(dirname "$0")" && pwd)"
 VERSION="$(node -p "require('$HERE/../package.json').version")"
 RELEASE_DIR="$HERE/../../LingGuang-release"
-SITE_URL="http://114.55.11.191"
+SITE_URL="http://duyuxiang.cn"
 
 echo "==> 版本: $VERSION"
 
@@ -23,14 +23,14 @@ echo "==> 构建官网"
 npm run build
 
 echo "==> 上传站点与安装包"
-rsync -avz --delete "$HERE/dist/" "$REMOTE:/var/www/lingguang/site/"
-rsync -avz \
+rsync -avz --delete --rsync-path="sudo rsync" "$HERE/dist/" "$REMOTE:/var/www/lingguang/site/"
+rsync -avz --rsync-path="sudo rsync" \
   "$RELEASE_DIR/LingGuang-$VERSION-arm64.dmg" \
   "$RELEASE_DIR/LingGuang-$VERSION-x64.dmg" \
   "$REMOTE:/var/www/lingguang/downloads/"
 
 echo "==> 重载 nginx"
-ssh "$REMOTE" "nginx -t && nginx -s reload"
+ssh "$REMOTE" "sudo nginx -t && sudo nginx -s reload"
 
 echo "==> 自检"
 curl -sfI "$SITE_URL/" | head -1

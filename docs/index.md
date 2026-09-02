@@ -13,13 +13,13 @@
   ./deploy.sh
 
 场景三：改了 nginx 配置（deploy/nginx.conf）
-  scp /Users/duyuxiang/Desktop/灵光/deploy/nginx.conf root@114.55.11.191:/etc/nginx/conf.d/lingguang.conf
-  ssh root@114.55.11.191 'nginx -t && nginx -s reload'
+  scp /Users/duyuxiang/Desktop/灵光/deploy/nginx.conf admin@duyuxiang.cn:/tmp/lingguang.conf
+  ssh admin@duyuxiang.cn 'sudo mv /tmp/lingguang.conf /etc/nginx/conf.d/lingguang.conf && sudo nginx -t && sudo nginx -s reload'
 
 旧版本安装包会留在服务器上（下载目录的 rsync 没带删除），多次发版后会占磁盘（每个版本约 578M）。想清理时：
-  ssh root@114.55.11.191 'cd /var/www/lingguang/downloads && ls'   # 先看有哪些
+  ssh admin@duyuxiang.cn 'sudo ls /var/www/lingguang/downloads/'   # 先看有哪些
   # 确认后删旧版本：
-  ssh root@114.55.11.191 'rm /var/www/lingguang/downloads/LingGuang-1.0.1-*.dmg'
+  ssh admin@duyuxiang.cn 'sudo rm /var/www/lingguang/downloads/LingGuang-1.0.1-*.dmg'
 
 
 （1）你改了什么	（2）属于	（3）要做什么

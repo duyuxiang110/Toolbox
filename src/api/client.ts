@@ -6,7 +6,7 @@
 import axios, { AxiosError, type AxiosInstance, type InternalAxiosRequestConfig } from 'axios';
 
 const BASE_URL = 'http://127.0.0.1:3900/api';
-const CLOUD_BASE_URL = 'http://114.55.11.191/api/v2';
+const CLOUD_BASE_URL = 'http://duyuxiang.cn/api/v2';
 
 interface ApiResponse<T = any> {
   success: boolean;
