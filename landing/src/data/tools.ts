@@ -25,8 +25,24 @@ export interface Highlight {
 }
 
 export const highlights: Highlight[] = [
-  { title: '全程本地处理', desc: '文件不上传任何服务器，转换在你的电脑上完成，隐私无忧。', icon: 'shield' },
-  { title: '一键极速转换', desc: '拖入文件即开始，无需复杂配置，几秒出结果。', icon: 'bolt' },
-  { title: '拖拽自由排序', desc: '首页工具宫格支持拖拽重排，常用工具永远顺手。', icon: 'layout' },
-  { title: '双架构支持', desc: 'Apple 芯片与 Intel 芯片的 Mac 均可原生运行。', icon: 'chip' },
-]
+  {
+    title: "全程本地处理",
+    desc: "文件不上传任何服务器，转换在你的电脑上完成，隐私无忧。",
+    icon: "shield",
+  },
+  {
+    title: "一键极速转换",
+    desc: "拖入文件即开始，无需复杂配置，几秒出结果。",
+    icon: "bolt",
+  },
+  {
+    title: "拖拽自由排序",
+    desc: "首页工具宫格支持拖拽重排，常用工具永远顺手。",
+    icon: "layout",
+  },
+  {
+    title: "跨平台支持",
+    desc: "macOS 与 Windows 双平台原生支持，Mac 含 Apple 芯片与 Intel 架构。",
+    icon: "chip",
+  },
+];

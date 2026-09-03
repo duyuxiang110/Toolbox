@@ -251,9 +251,48 @@ body {
   background: radial-gradient(50% 60% at 50% 20%, rgba(122, 92, 255, 0.1), transparent 70%);
   pointer-events: none;
 }
+/* 平台切换 */
+.dl-tabs {
+  position: relative;
+  margin: 0 auto 0;
+  max-width: 320px;
+  display: flex;
+  gap: 6px;
+  padding: 5px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+}
+
+.dl-tab {
+  flex: 1;
+  padding: 11px 0;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink-soft);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.3s var(--ease), color 0.3s, box-shadow 0.3s;
+}
+
+.dl-tab:hover {
+  color: var(--ink);
+}
+
+.dl-tab-active {
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 4px 14px rgba(11, 18, 32, 0.1);
+}
 .dl-grid {
   position: relative; margin: 44px auto 0; max-width: 760px;
   display: grid; grid-template-columns: 1fr 1fr; gap: 20px;
+}
+.dl-grid-single {
+  grid-template-columns: 1fr;
+  max-width: 400px;
 }
 .dl-card {
   position: relative; padding: 38px 26px; border-radius: 20px;

@@ -1,10 +1,14 @@
 import { useEffect, useState } from 'react'
 
 export type Arch = 'arm64' | 'x64'
+export type Platform = "mac" | "win" | "other";
+
 export interface AppMeta {
-  version: string
-  isMac: boolean
-  recommendedArch: Arch
+  version: string;
+  platform: Platform;
+  isMac: boolean;
+  isWin: boolean;
+  recommendedArch: Arch;
 }
 
 /** 模块级缓存：多处调用 useAppMeta 共享同一次 fetch 与探测结果 */
@@ -12,10 +16,10 @@ let metaPromise: Promise<{ version: string; arch: Arch }> | null = null
 
 function loadMeta() {
   if (!metaPromise) {
-    const versionP = fetch('/version.json')
+    const versionP = fetch("/version.json")
       .then((r) => r.json())
       .then((d: { version: string }) => d.version)
-      .catch(() => '1.0.1')
+      .catch(() => "1.0.2");
 
     const nav = navigator as Navigator & {
       userAgentData?: {
@@ -36,9 +40,12 @@ function loadMeta() {
   return metaPromise
 }
 
-/** 拉取版本号；探测平台，默认推荐 Apple 芯片（当前主流） */
+/** 拉取版本号；探测平台，Mac 默认推荐 Apple 芯片（当前主流） */
 export function useAppMeta(): AppMeta {
-  const [meta, setMeta] = useState<{ version: string; arch: Arch }>({ version: '1.0.1', arch: 'arm64' })
+  const [meta, setMeta] = useState<{ version: string; arch: Arch }>({
+    version: "1.0.2",
+    arch: "arm64",
+  });
 
   useEffect(() => {
     let alive = true
@@ -50,6 +57,15 @@ export function useAppMeta(): AppMeta {
     }
   }, [])
 
-  const isMac = /Mac/i.test(navigator.userAgent)
-  return { version: meta.version, isMac, recommendedArch: meta.arch }
+  const ua = navigator.userAgent;
+  const isMac = /Mac/i.test(ua);
+  const isWin = /Win/i.test(ua);
+  const platform: Platform = isMac ? "mac" : isWin ? "win" : "other";
+  return {
+    version: meta.version,
+    platform,
+    isMac,
+    isWin,
+    recommendedArch: meta.arch,
+  };
 }
