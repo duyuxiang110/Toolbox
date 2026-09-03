@@ -13,7 +13,8 @@
     "electron:build:mac": "vite build && electron-builder --mac",
     "electron:build:all": "vite build && ELECTRON_BUILDER_BINARIES_MIRROR=https://cdn.npmmirror.com/binaries/electron-builder-binaries/ electron-builder --win --mac",
     "electron:build:mac:dir": "vite build && electron-builder --mac --dir",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "release": "npm run electron:build:all && cd landing && ./deploy.sh"
   },
   "build": {
     "appId": "com.lingguang.app",
