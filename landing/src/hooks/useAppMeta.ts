@@ -19,7 +19,7 @@ function loadMeta() {
     const versionP = fetch("/version.json")
       .then((r) => r.json())
       .then((d: { version: string }) => d.version)
-      .catch(() => "1.0.2");
+      .catch(() => "1.0.3");
 
     const nav = navigator as Navigator & {
       userAgentData?: {
@@ -43,7 +43,7 @@ function loadMeta() {
 /** 拉取版本号；探测平台，Mac 默认推荐 Apple 芯片（当前主流） */
 export function useAppMeta(): AppMeta {
   const [meta, setMeta] = useState<{ version: string; arch: Arch }>({
-    version: "1.0.2",
+    version: "1.0.3",
     arch: "arm64",
   });
 

@@ -1,6 +1,6 @@
 {
   "name": "lingguang",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "灵光 - 跨平台实用工具箱桌面应用",
   "author": "LingGuang",
   "main": "electron/main.js",
