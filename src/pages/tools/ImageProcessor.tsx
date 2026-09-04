@@ -35,14 +35,15 @@ import {
   convertFormat,
   rotateImage,
   cropImage,
+  inflateToTarget,
   type OpResult,
-} from '../../utils/imageOps';
+} from "../../utils/imageOps";
 import './ImageProcessor.less';
 
 const { Dragger } = Upload;
 const MAX_SIZE = 10 * 1024 * 1024;
 
-type OpKey = 'compress' | 'resize' | 'format' | 'crop' | 'rotate';
+type OpKey = "compress" | "inflate" | "resize" | "format" | "crop" | "rotate";
 
 interface WorkImage {
   id: string;
@@ -78,29 +79,36 @@ export default function ImageProcessor({ onBack }: { onBack: () => void }) {
   const { message } = App.useApp();
   const [images, setImages] = useState<WorkImage[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [op, setOp] = useState<OpKey>('compress');
+  const [op, setOp] = useState<OpKey>("compress");
   const [processing, setProcessing] = useState(false);
 
   // 压缩参数
-  const [level, setLevel] = useState<'hd' | 'balanced'>('balanced');
+  const [level, setLevel] = useState<"hd" | "balanced">("balanced");
   const [targetKB, setTargetKB] = useState<number | null>(200);
+  // 增大参数
+  const [inflateKB, setInflateKB] = useState<number | null>(1024);
   // 缩放参数
-  const [resizeMode, setResizeMode] = useState<'percent' | 'longedge' | 'exact'>('percent');
+  const [resizeMode, setResizeMode] = useState<
+    "percent" | "longedge" | "exact"
+  >("percent");
   const [percent, setPercent] = useState(50);
   const [longEdge, setLongEdge] = useState(1080);
   const [exactW, setExactW] = useState(800);
   const [exactH, setExactH] = useState(600);
   const [lockRatio, setLockRatio] = useState(true);
   // 格式参数
-  const [targetFormat, setTargetFormat] = useState<'png' | 'jpg'>('jpg');
+  const [targetFormat, setTargetFormat] = useState<"png" | "jpg">("jpg");
   const [jpgQuality, setJpgQuality] = useState(90);
   // 裁剪参数
   const [crop, setCrop] = useState<Point>({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
-  const [aspectKey, setAspectKey] = useState('free');
+  const [aspectKey, setAspectKey] = useState("free");
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
 
-  const selected = useMemo(() => images.find((i) => i.id === selectedId) || null, [images, selectedId]);
+  const selected = useMemo(
+    () => images.find((i) => i.id === selectedId) || null,
+    [images, selectedId],
+  );
 
   // 切换图片或图片内容变化（如刚裁剪完）时，重置裁剪器状态，避免旧的 crop/zoom 与新图不匹配
   useEffect(() => {
@@ -111,7 +119,7 @@ export default function ImageProcessor({ onBack }: { onBack: () => void }) {
 
   // ===== 上传 =====
   const handleBeforeUpload = async (file: File) => {
-    if (!file.type.startsWith('image/')) {
+    if (!file.type.startsWith("image/")) {
       message.error(`「${file.name}」不是图片文件`);
       return Upload.LIST_IGNORE;
     }
@@ -143,19 +151,26 @@ export default function ImageProcessor({ onBack }: { onBack: () => void }) {
 
   // ===== 批量应用（压缩/缩放/格式） =====
   const applyToAll = async (
-    fn: (el: HTMLImageElement, originalEl: HTMLImageElement) => Promise<OpResult>,
-    successMsg: string
+    fn: (
+      el: HTMLImageElement,
+      originalEl: HTMLImageElement,
+      img: WorkImage,
+    ) => Promise<OpResult>,
+    successMsg: string,
   ) => {
     if (images.length === 0) {
-      message.warning('请先上传图片');
+      message.warning("请先上传图片");
       return;
     }
     setProcessing(true);
     try {
       const updated: WorkImage[] = [];
       for (const img of images) {
-        const [el, originalEl] = await Promise.all([loadImage(img.dataUrl), loadImage(img.originalDataUrl)]);
-        const res = await fn(el, originalEl);
+        const [el, originalEl] = await Promise.all([
+          loadImage(img.dataUrl),
+          loadImage(img.originalDataUrl),
+        ]);
+        const res = await fn(el, originalEl, img);
         const ext = extOf(res.dataUrl);
         updated.push({
           ...img,
@@ -169,7 +184,7 @@ export default function ImageProcessor({ onBack }: { onBack: () => void }) {
       setImages(updated);
       message.success(`${successMsg}（共 ${updated.length} 张）`);
     } catch {
-      message.error('处理失败，请重试');
+      message.error("处理失败，请重试");
     } finally {
       setProcessing(false);
     }
@@ -177,28 +192,56 @@ export default function ImageProcessor({ onBack }: { onBack: () => void }) {
 
   const handleCompress = () =>
     applyToAll(async (el) => {
-      if (targetKB && targetKB > 0) return compressToTarget(el, targetKB, level);
-      return compressWithQuality(el, level === 'hd' ? 0.85 : 0.65);
-    }, '压缩完成');
+      if (targetKB && targetKB > 0)
+        return compressToTarget(el, targetKB, level);
+      return compressWithQuality(el, level === "hd" ? 0.85 : 0.65);
+    }, "压缩完成");
+
+  // 按原图体积的百分比压缩：25%/50%/75%
+  const handleCompressPercent = (percent: number) =>
+    applyToAll(async (el, _originalEl, img) => {
+      const targetKB = Math.max(
+        1,
+        Math.round((img.originalSize * percent) / 1024 / 100),
+      );
+      return compressToTarget(el, targetKB, level);
+    }, `已压缩至原图 ${percent}%`);
 
   const handleResize = () =>
     applyToAll(async (_el, originalEl) => {
       // 始终以原图尺寸为基准计算，重复点击结果幂等，不会越缩越小/无法恢复
-      if (resizeMode === 'percent') return resizeByPercent(originalEl, percent);
-      if (resizeMode === 'longedge') return resizeByLongEdge(originalEl, longEdge);
-      return lockRatio ? resizeToFit(originalEl, exactW, exactH) : resizeToExact(originalEl, exactW, exactH);
-    }, '尺寸调整完成');
+      if (resizeMode === "percent") return resizeByPercent(originalEl, percent);
+      if (resizeMode === "longedge")
+        return resizeByLongEdge(originalEl, longEdge);
+      return lockRatio
+        ? resizeToFit(originalEl, exactW, exactH)
+        : resizeToExact(originalEl, exactW, exactH);
+    }, "尺寸调整完成");
 
   const handleFormat = () =>
     applyToAll(
-      (el) => convertFormat(el, targetFormat === 'png' ? 'image/png' : 'image/jpeg', jpgQuality / 100),
-      `已转换为 ${targetFormat.toUpperCase()}`
+      (el) =>
+        convertFormat(
+          el,
+          targetFormat === "png" ? "image/png" : "image/jpeg",
+          jpgQuality / 100,
+        ),
+      `已转换为 ${targetFormat.toUpperCase()}`,
+    );
+
+  const handleInflate = () =>
+    applyToAll(
+      (el) => inflateToTarget(el, inflateKB ?? 1024),
+      `已增大至 ${inflateKB}KB`,
     );
 
   // ===== 单张应用（旋转/裁剪） =====
-  const applyToSelected = async (fn: (el: HTMLImageElement) => Promise<OpResult>, successMsg: string) => {
+  const applyToSelected = async (
+    fn: (el: HTMLImageElement) => Promise<OpResult>,
+    successMsg: string,
+  ) => {
     if (!selected) {
-      message.warning('请先在左侧选择一张图片');
+      message.warning("请先在左侧选择一张图片");
       return;
     }
     setProcessing(true);
@@ -208,25 +251,32 @@ export default function ImageProcessor({ onBack }: { onBack: () => void }) {
       setImages((prev) =>
         prev.map((i) =>
           i.id === selected.id
-            ? { ...i, dataUrl: res.dataUrl, width: res.width, height: res.height, size: res.size }
-            : i
-        )
+            ? {
+                ...i,
+                dataUrl: res.dataUrl,
+                width: res.width,
+                height: res.height,
+                size: res.size,
+              }
+            : i,
+        ),
       );
       message.success(successMsg);
     } catch {
-      message.error('处理失败，请重试');
+      message.error("处理失败，请重试");
     } finally {
       setProcessing(false);
     }
   };
 
-  const handleRotate = (angle: number) => applyToSelected((el) => rotateImage(el, angle), '旋转完成');
+  const handleRotate = (angle: number) =>
+    applyToSelected((el) => rotateImage(el, angle), "旋转完成");
 
   const handleCrop = () =>
     applyToSelected((el) => {
-      if (!croppedAreaPixels) return Promise.reject(new Error('no area'));
+      if (!croppedAreaPixels) return Promise.reject(new Error("no area"));
       return cropImage(el, croppedAreaPixels);
-    }, '裁剪完成');
+    }, "裁剪完成");
 
   // ===== 重置 / 删除 / 下载 =====
   const handleReset = () => {
@@ -238,9 +288,9 @@ export default function ImageProcessor({ onBack }: { onBack: () => void }) {
         height: i.originalHeight,
         size: i.originalSize,
         name: i.name,
-      }))
+      })),
     );
-    message.success('已恢复为原图');
+    message.success("已恢复为原图");
   };
 
   const handleRemove = (id: string) => {
@@ -248,23 +298,26 @@ export default function ImageProcessor({ onBack }: { onBack: () => void }) {
     if (selectedId === id) setSelectedId(null);
   };
 
-  const handleDownloadOne = (img: WorkImage) => downloadDataUrl(img.dataUrl, img.name);
+  const handleDownloadOne = (img: WorkImage) =>
+    downloadDataUrl(img.dataUrl, img.name);
 
   const handleDownloadAll = async () => {
     if (images.length === 0) return;
     const zip = new JSZip();
     images.forEach((img, i) => {
-      const base64 = img.dataUrl.split(',')[1];
-      zip.file(`${String(i + 1).padStart(2, '0')}_${img.name}`, base64, { base64: true });
+      const base64 = img.dataUrl.split(",")[1];
+      zip.file(`${String(i + 1).padStart(2, "0")}_${img.name}`, base64, {
+        base64: true,
+      });
     });
-    const blob = await zip.generateAsync({ type: 'blob' });
+    const blob = await zip.generateAsync({ type: "blob" });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
+    const a = document.createElement("a");
     a.href = url;
     a.download = `processed_images_${Date.now()}.zip`;
     a.click();
     URL.revokeObjectURL(url);
-    message.success('打包下载已开始');
+    message.success("打包下载已开始");
   };
 
   // ===== 各功能控制面板 =====
@@ -273,7 +326,12 @@ export default function ImageProcessor({ onBack }: { onBack: () => void }) {
       <div className="imgproc-controls">
         <div className="ctrl-row">
           <span className="ctrl-label">压缩程度</span>
-          <Radio.Group value={level} onChange={(e) => setLevel(e.target.value)} optionType="button" buttonStyle="solid">
+          <Radio.Group
+            value={level}
+            onChange={(e) => setLevel(e.target.value)}
+            optionType="button"
+            buttonStyle="solid"
+          >
             <Radio.Button value="hd">高清</Radio.Button>
             <Radio.Button value="balanced">均衡</Radio.Button>
           </Radio.Group>
@@ -291,11 +349,73 @@ export default function ImageProcessor({ onBack }: { onBack: () => void }) {
           />
         </div>
         <p className="ctrl-hint">
-          {level === 'hd' ? '高清：优先画质，体积可能略大' : '均衡：画质与体积兼顾'}
-          {targetKB ? `，并确保每张 ≤ ${targetKB}KB（超出将自动降质量/缩尺寸）` : ''}
+          {level === "hd"
+            ? "高清：优先画质，体积可能略大"
+            : "均衡：画质与体积兼顾"}
+          {targetKB
+            ? `，并确保每张 ≤ ${targetKB}KB（超出将自动降质量/缩尺寸）`
+            : ""}
         </p>
-        <Button type="primary" block loading={processing} onClick={handleCompress} icon={<CompressOutlined />}>
+        <div className="ctrl-row">
+          <span className="ctrl-label">快捷压缩</span>
+          <div className="ctrl-quick-btns">
+            <Button
+              onClick={() => handleCompressPercent(25)}
+              disabled={processing}
+            >
+              压缩至 25%
+            </Button>
+            <Button
+              onClick={() => handleCompressPercent(50)}
+              disabled={processing}
+            >
+              压缩至 50%
+            </Button>
+            <Button
+              onClick={() => handleCompressPercent(75)}
+              disabled={processing}
+            >
+              压缩至 75%
+            </Button>
+          </div>
+        </div>
+        <Button
+          type="primary"
+          block
+          loading={processing}
+          onClick={handleCompress}
+          icon={<CompressOutlined />}
+        >
           压缩全部（{images.length} 张）
+        </Button>
+      </div>
+    ),
+    inflate: (
+      <div className="imgproc-controls">
+        <div className="ctrl-row">
+          <span className="ctrl-label">目标体积</span>
+          <InputNumber
+            value={inflateKB}
+            onChange={(v) => setInflateKB(v)}
+            min={1}
+            max={51200}
+            addonAfter="KB/张"
+            placeholder="输入目标体积"
+            style={{ width: 200 }}
+          />
+        </div>
+        <p className="ctrl-hint">
+          将图片体积增大到指定大小。画质不受影响，通过填充元数据实现。 例如
+          100KB 的图片输入 3000，将得到约 3MB 的图片。
+        </p>
+        <Button
+          type="primary"
+          block
+          loading={processing}
+          onClick={handleInflate}
+          icon={<ExpandOutlined />}
+        >
+          增大全部（{images.length} 张）
         </Button>
       </div>
     ),
@@ -303,12 +423,17 @@ export default function ImageProcessor({ onBack }: { onBack: () => void }) {
       <div className="imgproc-controls">
         <div className="ctrl-row">
           <span className="ctrl-label">缩放方式</span>
-          <Radio.Group value={resizeMode} onChange={(e) => setResizeMode(e.target.value)} optionType="button" buttonStyle="solid">
+          <Radio.Group
+            value={resizeMode}
+            onChange={(e) => setResizeMode(e.target.value)}
+            optionType="button"
+            buttonStyle="solid"
+          >
             <Radio.Button value="percent">等比缩放</Radio.Button>
             <Radio.Button value="exact">指定尺寸</Radio.Button>
           </Radio.Group>
         </div>
-        {resizeMode === 'percent' && (
+        {resizeMode === "percent" && (
           <>
             <div className="ctrl-row">
               <span className="ctrl-label">缩放比例</span>
@@ -320,33 +445,79 @@ export default function ImageProcessor({ onBack }: { onBack: () => void }) {
                 style={{ flex: 1 }}
                 // marks={{ 50: '50%', 100: '100%', 200: '200%' }}
               />
-              <InputNumber value={percent} onChange={(v) => setPercent(v || 100)} min={5} max={400} addonAfter="%" style={{ width: 110 }} />
+              <InputNumber
+                value={percent}
+                onChange={(v) => setPercent(v || 100)}
+                min={5}
+                max={400}
+                addonAfter="%"
+                style={{ width: 110 }}
+              />
             </div>
             <div className="ctrl-row">
               <span className="ctrl-label">或按长边</span>
-              <InputNumber value={longEdge} onChange={(v) => setLongEdge(v || 1080)} min={16} max={8000} addonAfter="px" style={{ width: 140 }} />
-              <Button size="small" onClick={() => { setResizeMode('percent'); }}>
+              <InputNumber
+                value={longEdge}
+                onChange={(v) => setLongEdge(v || 1080)}
+                min={16}
+                max={8000}
+                addonAfter="px"
+                style={{ width: 140 }}
+              />
+              <Button
+                size="small"
+                onClick={() => {
+                  setResizeMode("percent");
+                }}
+              >
                 使用长边模式
               </Button>
             </div>
           </>
         )}
-        {resizeMode === 'exact' && (
+        {resizeMode === "exact" && (
           <>
             <div className="ctrl-row">
               <span className="ctrl-label">宽 × 高</span>
-              <InputNumber value={exactW} onChange={(v) => setExactW(v || 100)} min={1} max={10000} addonAfter="px" style={{ width: 120 }} />
+              <InputNumber
+                value={exactW}
+                onChange={(v) => setExactW(v || 100)}
+                min={1}
+                max={10000}
+                addonAfter="px"
+                style={{ width: 120 }}
+              />
               <span className="ctrl-x">×</span>
-              <InputNumber value={exactH} onChange={(v) => setExactH(v || 100)} min={1} max={10000} addonAfter="px" style={{ width: 120 }} />
+              <InputNumber
+                value={exactH}
+                onChange={(v) => setExactH(v || 100)}
+                min={1}
+                max={10000}
+                addonAfter="px"
+                style={{ width: 120 }}
+              />
             </div>
             <div className="ctrl-row">
               <span className="ctrl-label">锁定比例</span>
-              <Switch checked={lockRatio} onChange={setLockRatio} checkedChildren="开" unCheckedChildren="关" />
-              <span className="ctrl-hint-inline">{lockRatio ? '等比适配到框内，不变形' : '拉伸到精确尺寸'}</span>
+              <Switch
+                checked={lockRatio}
+                onChange={setLockRatio}
+                checkedChildren="开"
+                unCheckedChildren="关"
+              />
+              <span className="ctrl-hint-inline">
+                {lockRatio ? "等比适配到框内，不变形" : "拉伸到精确尺寸"}
+              </span>
             </div>
           </>
         )}
-        <Button type="primary" block loading={processing} onClick={handleResize} icon={<ExpandOutlined />}>
+        <Button
+          type="primary"
+          block
+          loading={processing}
+          onClick={handleResize}
+          icon={<ExpandOutlined />}
+        >
           调整全部尺寸（{images.length} 张）
         </Button>
       </div>
@@ -355,20 +526,41 @@ export default function ImageProcessor({ onBack }: { onBack: () => void }) {
       <div className="imgproc-controls">
         <div className="ctrl-row">
           <span className="ctrl-label">目标格式</span>
-          <Radio.Group value={targetFormat} onChange={(e) => setTargetFormat(e.target.value)} optionType="button" buttonStyle="solid">
+          <Radio.Group
+            value={targetFormat}
+            onChange={(e) => setTargetFormat(e.target.value)}
+            optionType="button"
+            buttonStyle="solid"
+          >
             <Radio.Button value="jpg">JPG</Radio.Button>
             <Radio.Button value="png">PNG</Radio.Button>
           </Radio.Group>
         </div>
-        {targetFormat === 'jpg' && (
+        {targetFormat === "jpg" && (
           <div className="ctrl-row">
             <span className="ctrl-label">输出质量</span>
-            <Slider value={jpgQuality} onChange={setJpgQuality} min={10} max={100} style={{ flex: 1 }} />
+            <Slider
+              value={jpgQuality}
+              onChange={setJpgQuality}
+              min={10}
+              max={100}
+              style={{ flex: 1 }}
+            />
             <span className="ctrl-val">{jpgQuality}%</span>
           </div>
         )}
-        <p className="ctrl-hint">{targetFormat === 'jpg' ? 'JPG 体积小，透明区域将填充白底' : 'PNG 无损，保留透明通道'}</p>
-        <Button type="primary" block loading={processing} onClick={handleFormat} icon={<SwapOutlined />}>
+        <p className="ctrl-hint">
+          {targetFormat === "jpg"
+            ? "JPG 体积小，透明区域将填充白底"
+            : "PNG 无损，保留透明通道"}
+        </p>
+        <Button
+          type="primary"
+          block
+          loading={processing}
+          onClick={handleFormat}
+          icon={<SwapOutlined />}
+        >
           转换全部格式（{images.length} 张）
         </Button>
       </div>
@@ -390,11 +582,27 @@ export default function ImageProcessor({ onBack }: { onBack: () => void }) {
         </div>
         <div className="ctrl-row">
           <span className="ctrl-label">缩放</span>
-          <Slider value={zoom} onChange={setZoom} min={1} max={4} step={0.1} style={{ flex: 1 }} />
+          <Slider
+            value={zoom}
+            onChange={setZoom}
+            min={1}
+            max={4}
+            step={0.1}
+            style={{ flex: 1 }}
+          />
           <span className="ctrl-val">{zoom.toFixed(1)}x</span>
         </div>
-        <p className="ctrl-hint">在右侧预览中拖动、缩放调整裁剪区域，仅作用于当前选中图片</p>
-        <Button type="primary" block loading={processing} onClick={handleCrop} disabled={!selected} icon={<BlockOutlined />}>
+        <p className="ctrl-hint">
+          在右侧预览中拖动、缩放调整裁剪区域，仅作用于当前选中图片
+        </p>
+        <Button
+          type="primary"
+          block
+          loading={processing}
+          onClick={handleCrop}
+          disabled={!selected}
+          icon={<BlockOutlined />}
+        >
           裁剪当前图片
         </Button>
       </div>
@@ -403,10 +611,18 @@ export default function ImageProcessor({ onBack }: { onBack: () => void }) {
       <div className="imgproc-controls">
         <p className="ctrl-hint">旋转仅作用于当前选中图片</p>
         <div className="ctrl-rotate-btns">
-          <Button onClick={() => handleRotate(-90)} disabled={processing} icon={<RotateRightOutlined style={{ transform: 'scaleX(-1)' }} />}>
+          <Button
+            onClick={() => handleRotate(-90)}
+            disabled={processing}
+            icon={<RotateRightOutlined style={{ transform: "scaleX(-1)" }} />}
+          >
             左转 90°
           </Button>
-          <Button onClick={() => handleRotate(90)} disabled={processing} icon={<RotateRightOutlined />}>
+          <Button
+            onClick={() => handleRotate(90)}
+            disabled={processing}
+            icon={<RotateRightOutlined />}
+          >
             右转 90°
           </Button>
           <Button onClick={() => handleRotate(180)} disabled={processing}>
@@ -425,15 +641,29 @@ export default function ImageProcessor({ onBack }: { onBack: () => void }) {
           返回工具箱
         </Button>
         <div className="imgproc-toolbar-right">
-          <Upload accept="image/*" multiple showUploadList={false} beforeUpload={handleBeforeUpload}>
+          <Upload
+            accept="image/*"
+            multiple
+            showUploadList={false}
+            beforeUpload={handleBeforeUpload}
+          >
             <Button icon={<PlusOutlined />}>添加图片</Button>
           </Upload>
           <Tooltip title="恢复所有图片为原始状态">
-            <Button icon={<UndoOutlined />} onClick={handleReset} disabled={images.length === 0}>
+            <Button
+              icon={<UndoOutlined />}
+              onClick={handleReset}
+              disabled={images.length === 0}
+            >
               重置
             </Button>
           </Tooltip>
-          <Button type="primary" icon={<DownloadOutlined />} onClick={handleDownloadAll} disabled={images.length === 0}>
+          <Button
+            type="primary"
+            icon={<DownloadOutlined />}
+            onClick={handleDownloadAll}
+            disabled={images.length === 0}
+          >
             打包下载
           </Button>
         </div>
@@ -446,7 +676,13 @@ export default function ImageProcessor({ onBack }: { onBack: () => void }) {
             图片列表 <span className="imgproc-count">{images.length}</span>
           </div>
           {images.length === 0 ? (
-            <Dragger accept="image/*" multiple showUploadList={false} beforeUpload={handleBeforeUpload} className="imgproc-uploader">
+            <Dragger
+              accept="image/*"
+              multiple
+              showUploadList={false}
+              beforeUpload={handleBeforeUpload}
+              className="imgproc-uploader"
+            >
               <p className="ant-upload-drag-icon">
                 <PictureOutlined />
               </p>
@@ -458,10 +694,14 @@ export default function ImageProcessor({ onBack }: { onBack: () => void }) {
               {images.map((img) => (
                 <div
                   key={img.id}
-                  className={`imgproc-item ${img.id === selectedId ? 'active' : ''}`}
+                  className={`imgproc-item ${img.id === selectedId ? "active" : ""}`}
                   onClick={() => setSelectedId(img.id)}
                 >
-                  <img src={img.dataUrl} alt={img.name} className="imgproc-item-thumb" />
+                  <img
+                    src={img.dataUrl}
+                    alt={img.name}
+                    className="imgproc-item-thumb"
+                  />
                   <div className="imgproc-item-info">
                     <Tooltip title={img.name}>
                       <span className="imgproc-item-name">{img.name}</span>
@@ -507,11 +747,54 @@ export default function ImageProcessor({ onBack }: { onBack: () => void }) {
             activeKey={op}
             onChange={(k) => setOp(k as OpKey)}
             items={[
-              { key: 'compress', label: <span><CompressOutlined /> 压缩</span> },
-              { key: 'resize', label: <span><ExpandOutlined /> 改尺寸</span> },
-              { key: 'format', label: <span><SwapOutlined /> 改格式</span> },
-              { key: 'crop', label: <span><BlockOutlined /> 裁剪</span> },
-              { key: 'rotate', label: <span><RotateRightOutlined /> 旋转</span> },
+              {
+                key: "compress",
+                label: (
+                  <span>
+                    <CompressOutlined /> 压缩
+                  </span>
+                ),
+              },
+              {
+                key: "inflate",
+                label: (
+                  <span>
+                    <ExpandOutlined /> 增大
+                  </span>
+                ),
+              },
+              {
+                key: "resize",
+                label: (
+                  <span>
+                    <ExpandOutlined /> 改尺寸
+                  </span>
+                ),
+              },
+              {
+                key: "format",
+                label: (
+                  <span>
+                    <SwapOutlined /> 改格式
+                  </span>
+                ),
+              },
+              {
+                key: "crop",
+                label: (
+                  <span>
+                    <BlockOutlined /> 裁剪
+                  </span>
+                ),
+              },
+              {
+                key: "rotate",
+                label: (
+                  <span>
+                    <RotateRightOutlined /> 旋转
+                  </span>
+                ),
+              },
             ]}
           />
 
@@ -527,7 +810,7 @@ export default function ImageProcessor({ onBack }: { onBack: () => void }) {
                   description="请先在左侧上传或选择图片"
                   className="imgproc-preview-empty"
                 />
-              ) : op === 'crop' ? (
+              ) : op === "crop" ? (
                 <div className="imgproc-cropbox">
                   <Cropper
                     image={selected.dataUrl}
@@ -538,19 +821,35 @@ export default function ImageProcessor({ onBack }: { onBack: () => void }) {
                     maxZoom={4}
                     onCropChange={setCrop}
                     onZoomChange={setZoom}
-                    onCropComplete={(_, areaPixels) => setCroppedAreaPixels(areaPixels)}
+                    onCropComplete={(_, areaPixels) =>
+                      setCroppedAreaPixels(areaPixels)
+                    }
                   />
                 </div>
               ) : (
                 <div className="imgproc-preview-box">
-                  <img src={selected.dataUrl} alt={selected.name} className="imgproc-preview-img" />
+                  <img
+                    src={selected.dataUrl}
+                    alt={selected.name}
+                    className="imgproc-preview-img"
+                  />
                   <div className="imgproc-preview-meta">
-                    {selected.width} × {selected.height} px · {formatBytes(selected.size)}
+                    {selected.width} × {selected.height} px ·{" "}
+                    {formatBytes(selected.size)}
                     {selected.size !== selected.originalSize && (
                       <span className="imgproc-preview-delta">
                         （原 {formatBytes(selected.originalSize)}，
-                        {selected.size < selected.originalSize ? '已减小' : '已增大'}{' '}
-                        {Math.abs(Math.round(((selected.size - selected.originalSize) / selected.originalSize) * 100))}%）
+                        {selected.size < selected.originalSize
+                          ? "已减小"
+                          : "已增大"}{" "}
+                        {Math.abs(
+                          Math.round(
+                            ((selected.size - selected.originalSize) /
+                              selected.originalSize) *
+                              100,
+                          ),
+                        )}
+                        %）
                       </span>
                     )}
                   </div>

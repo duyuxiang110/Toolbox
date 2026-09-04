@@ -38,8 +38,8 @@ function createWindow() {
     minHeight: 600,
     title: "灵光",
     icon: getAssetPath("icon.png"),
-    // titleBarStyle: 'hidden',
-    frame: false, // 隐藏标题栏
+    // frame: false, // 隐藏标题栏
+    // titleBarStyle: "hidden", // 隐藏标题栏，macOS 保留红绿灯按钮，系统自动提供顶部拖拽
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,

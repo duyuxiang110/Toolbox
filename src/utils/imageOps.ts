@@ -70,17 +70,18 @@ function exportCanvas(canvas: HTMLCanvasElement, format: OutputFormat, quality?:
 
 /**
  * 压缩到目标体积（KB）以内 —— 二分查找 JPEG 质量
- * @param level 高清：质量下限高、缩放保守；均衡：允许更低质量
+ * 质量范围 [0.01, 1.0] 全覆盖，确保任意目标体积都能命中
+ * @param level 仅影响缩尺寸策略（hd 更保守），不影响质量范围
  */
 export async function compressToTarget(
   img: HTMLImageElement,
   targetKB: number,
-  level: 'hd' | 'balanced'
+  level: "hd" | "balanced" = "balanced",
 ): Promise<OpResult & { quality: number }> {
   const targetBytes = targetKB * 1024;
-  const minQ = level === 'hd' ? 0.55 : 0.25;
-  const maxQ = level === 'hd' ? 0.95 : 0.85;
-  const shrinkStep = level === 'hd' ? 0.92 : 0.85;
+  const minQ = 0.01;
+  const maxQ = 1.0;
+  const shrinkStep = level === "hd" ? 0.92 : 0.85;
 
   let current = img as HTMLImageElement | HTMLCanvasElement;
   let w = img.naturalWidth;
@@ -89,14 +90,14 @@ export async function compressToTarget(
   // 外层：若最低质量仍超体积，逐步缩小尺寸再试（最多 8 轮）
   for (let round = 0; round < 8; round++) {
     const canvas = drawToCanvas(current, w, h);
-    // 内层：二分查找质量
+    // 内层：二分查找质量（12 次迭代，精度达 0.0002）
     let lo = minQ;
     let hi = maxQ;
     let best: OpResult | null = null;
     let bestQ = minQ;
-    for (let i = 0; i < 8; i++) {
+    for (let i = 0; i < 12; i++) {
       const mid = (lo + hi) / 2;
-      const res = exportCanvas(canvas, 'image/jpeg', mid);
+      const res = exportCanvas(canvas, "image/jpeg", mid);
       if (res.size <= targetBytes) {
         best = res;
         bestQ = mid;
@@ -115,7 +116,7 @@ export async function compressToTarget(
 
   // 兜底：返回最小尺寸最低质量
   const canvas = drawToCanvas(current, w, h);
-  const res = exportCanvas(canvas, 'image/jpeg', minQ);
+  const res = exportCanvas(canvas, "image/jpeg", minQ);
   return { ...res, quality: minQ };
 }
 
@@ -250,6 +251,110 @@ export async function cropImage(
     canvas.height
   );
   return exportCanvas(canvas, format ?? detectFormat(img.src));
+}
+
+// ==================== 增大体积 ====================
+
+/** Blob 转 dataURL */
+function blobToDataUrl(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(new Error('Blob 读取失败'));
+    reader.readAsDataURL(blob);
+  });
+}
+
+/** CRC32 查找表（用于 PNG tEXt 块校验） */
+const crcTable = (() => {
+  const t = new Uint32Array(256);
+  for (let n = 0; n < 256; n++) {
+    let c = n;
+    for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+    t[n] = c;
+  }
+  return t;
+})();
+
+function crc32(data: Uint8Array): number {
+  let crc = 0xffffffff;
+  for (let i = 0; i < data.length; i++) crc = crcTable[(crc ^ data[i]) & 0xff] ^ (crc >>> 8);
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
+/** 构造 PNG tEXt 块（keyword + \0 + padding） */
+function makePngTextChunk(keyword: string, textBytes: number): Uint8Array {
+  const kw = new TextEncoder().encode(keyword);
+  const dataLen = kw.length + 1 + textBytes; // keyword + \0 + text
+  const chunk = new Uint8Array(12 + dataLen); // length(4) + type(4) + data + crc(4)
+  const view = new DataView(chunk.buffer);
+  view.setUint32(0, dataLen, false); // big-endian
+  chunk[4] = 0x74; chunk[5] = 0x45; chunk[6] = 0x58; chunk[7] = 0x74; // 't','E','X','t'
+  chunk.set(kw, 8);
+  chunk[8 + kw.length] = 0; // null separator
+  chunk.fill(0x41, 8 + kw.length + 1, 8 + dataLen); // 填充 'A'
+  const crc = crc32(chunk.subarray(4, 8 + dataLen));
+  view.setUint32(8 + dataLen, crc, false);
+  return chunk;
+}
+
+/**
+ * 增大图片体积到目标大小（KB）
+ * 先用最高质量编码，若仍不够则在文件中追加合法填充数据：
+ * - JPEG: 在 EOI 标记后追加（解码器忽略尾部数据）
+ * - PNG: 在 IEND 块前插入 tEXt 元数据块
+ * 画质完全不受影响。
+ */
+export async function inflateToTarget(
+  img: HTMLImageElement,
+  targetKB: number,
+  format?: OutputFormat
+): Promise<OpResult> {
+  const targetBytes = Math.round(targetKB * 1024);
+  const fmt = format ?? detectFormat(img.src);
+
+  // 1. 最高质量编码
+  const canvas = drawToCanvas(img, img.naturalWidth, img.naturalHeight);
+  const blob: Blob = await new Promise((resolve, reject) => {
+    canvas.toBlob(
+      (b) => (b ? resolve(b) : reject(new Error('编码失败'))),
+      fmt,
+      fmt === 'image/jpeg' ? 1.0 : undefined,
+    );
+  });
+
+  // 2. 已达标，直接返回
+  if (blob.size >= targetBytes) {
+    const dataUrl = await blobToDataUrl(blob);
+    return { dataUrl, width: canvas.width, height: canvas.height, size: blob.size };
+  }
+
+  // 3. 计算填充量并追加
+  const paddingSize = targetBytes - blob.size;
+  const original = new Uint8Array(await blob.arrayBuffer());
+
+  let paddedBlob: Blob;
+  if (fmt === 'image/jpeg') {
+    // JPEG: EOI 后追加零字节，解码器忽略尾部数据
+    // Uint8Array 默认填充零，无需额外操作
+    const padded = new Uint8Array(targetBytes);
+    padded.set(original, 0);
+    paddedBlob = new Blob([padded], { type: 'image/jpeg' });
+  } else {
+    // PNG: IEND 前插入 tEXt 块
+    // tEXt 块开销 = 12(length+type+crc) + 8(keyword"Comment"+\0)
+    const textLen = Math.max(0, paddingSize - 20);
+    const chunk = makePngTextChunk('Comment', textLen);
+    const iendStart = original.length - 12; // IEND 恒为最后 12 字节
+    const result = new Uint8Array(original.length + chunk.length);
+    result.set(original.subarray(0, iendStart), 0);
+    result.set(chunk, iendStart);
+    result.set(original.subarray(iendStart), iendStart + chunk.length);
+    paddedBlob = new Blob([result], { type: 'image/png' });
+  }
+
+  const dataUrl = await blobToDataUrl(paddedBlob);
+  return { dataUrl, width: canvas.width, height: canvas.height, size: paddedBlob.size };
 }
 
 // ==================== 工具 ====================
