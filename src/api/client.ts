@@ -4,9 +4,13 @@
  * 请求拦截器：统一附加 Authorization Token
  * 响应拦截器：统一处理错误，401 时自动刷新 Token，刷新失败则强制登出回到登录页
  */
-import axios, { AxiosError, type AxiosInstance, type InternalAxiosRequestConfig } from 'axios';
+import axios, {
+  AxiosError,
+  type AxiosInstance,
+  type InternalAxiosRequestConfig,
+} from "axios";
 
-const BASE_URL = 'https://duyuxiang.cn/api';
+const BASE_URL = "https://duyuxiang.cn/api";
 
 interface ApiResponse<T = any> {
   success: boolean;
@@ -16,7 +20,7 @@ interface ApiResponse<T = any> {
 }
 
 /** 无需附加 Token 的接口 */
-const AUTH_FREE_PATHS = ['/auth/login', '/auth/register'];
+const AUTH_FREE_PATHS = ["/auth/login", "/auth/register"];
 
 /** 业务错误（携带 HTTP 状态码与服务端 message） */
 class ApiError extends Error {
@@ -37,12 +41,15 @@ class ApiClient {
   private accessToken: string | null = null;
   private refreshToken: string | null = null;
   private isRefreshing = false;
-  private refreshSubscribers: { resolve: (token: string) => void; reject: (err: Error) => void }[] = [];
+  private refreshSubscribers: {
+    resolve: (token: string) => void;
+    reject: (err: Error) => void;
+  }[] = [];
   private http: AxiosInstance;
 
   constructor() {
-    this.accessToken = localStorage.getItem('accessToken');
-    this.refreshToken = localStorage.getItem('refreshToken');
+    this.accessToken = localStorage.getItem("accessToken");
+    this.refreshToken = localStorage.getItem("refreshToken");
 
     this.http = axios.create({
       baseURL: BASE_URL,
@@ -57,17 +64,17 @@ class ApiClient {
   setTokens(accessToken: string, refreshToken: string) {
     this.accessToken = accessToken;
     this.refreshToken = refreshToken;
-    localStorage.setItem('accessToken', accessToken);
-    localStorage.setItem('refreshToken', refreshToken);
+    localStorage.setItem("accessToken", accessToken);
+    localStorage.setItem("refreshToken", refreshToken);
   }
 
   clearTokens() {
     this.accessToken = null;
     this.refreshToken = null;
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
-    localStorage.removeItem('sessionId');
-    localStorage.removeItem('user');
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("refreshToken");
+    localStorage.removeItem("sessionId");
+    localStorage.removeItem("user");
   }
 
   getAccessToken() {
@@ -78,10 +85,11 @@ class ApiClient {
 
   /** 请求拦截：统一附加 Token */
   private onRequest = (config: InternalAxiosRequestConfig) => {
-    const url = config.url || '';
-    const needAuth = this.accessToken && !AUTH_FREE_PATHS.some((p) => url.includes(p));
+    const url = config.url || "";
+    const needAuth =
+      this.accessToken && !AUTH_FREE_PATHS.some((p) => url.includes(p));
     if (needAuth) {
-      config.headers.set('Authorization', `Bearer ${this.accessToken}`);
+      config.headers.set("Authorization", `Bearer ${this.accessToken}`);
     }
     return config;
   };
@@ -92,11 +100,16 @@ class ApiClient {
     const config = error.config as RetriableConfig | undefined;
     const body = await this.parseErrorBody(error);
 
-    if (status === 401 && config && !config._retried && !this.isAuthRequest(config.url)) {
-      if (body?.code === 'TOKEN_EXPIRED' && this.refreshToken) {
+    if (
+      status === 401 &&
+      config &&
+      !config._retried &&
+      !this.isAuthRequest(config.url)
+    ) {
+      if (body?.code === "TOKEN_EXPIRED" && this.refreshToken) {
         try {
           const newToken = await this.refreshAccessToken();
-          config.headers.set('Authorization', `Bearer ${newToken}`);
+          config.headers.set("Authorization", `Bearer ${newToken}`);
           config._retried = true;
           return this.http.request(config);
         } catch {
@@ -106,14 +119,17 @@ class ApiClient {
       this.forceLogout();
     }
 
-    const message = body?.message || error.message || '网络连接失败，请检查服务是否启动';
+    const message =
+      body?.message || error.message || "网络连接失败，请检查服务是否启动";
     return Promise.reject(new ApiError(status, message, body?.code));
   };
 
   // ===== 内部工具 =====
 
   /** 解析错误响应体（兼容 blob 响应） */
-  private async parseErrorBody(error: AxiosError): Promise<ApiResponse | undefined> {
+  private async parseErrorBody(
+    error: AxiosError,
+  ): Promise<ApiResponse | undefined> {
     let body = error.response?.data as any;
     if (body instanceof Blob) {
       try {
@@ -125,8 +141,12 @@ class ApiClient {
     return body;
   }
 
-  private isAuthRequest(url = '') {
-    return url.includes('/auth/login') || url.includes('/auth/register') || url.includes('/auth/refresh');
+  private isAuthRequest(url = "") {
+    return (
+      url.includes("/auth/login") ||
+      url.includes("/auth/register") ||
+      url.includes("/auth/refresh")
+    );
   }
 
   /** 刷新 Token，并发请求排队等待同一次刷新 */
@@ -140,9 +160,12 @@ class ApiClient {
     this.isRefreshing = true;
     return new Promise<string>((resolve, reject) => {
       axios
-        .post<ApiResponse<{ accessToken: string; refreshToken: string }>>(`${BASE_URL}/auth/refresh`, {
-          refreshToken: this.refreshToken,
-        })
+        .post<ApiResponse<{ accessToken: string; refreshToken: string }>>(
+          `${BASE_URL}/auth/refresh`,
+          {
+            refreshToken: this.refreshToken,
+          },
+        )
         .then((resp) => {
           const data = resp.data;
           if (data.success && data.data) {
@@ -150,7 +173,7 @@ class ApiClient {
             this.notifySubscribers(data.data.accessToken);
             resolve(data.data.accessToken);
           } else {
-            throw new Error(data.message || '刷新 Token 失败');
+            throw new Error(data.message || "刷新 Token 失败");
           }
         })
         .catch((err) => {
@@ -176,41 +199,55 @@ class ApiClient {
   /** 强制登出：清空本地凭证并通知 UI 回到登录页 */
   private forceLogout() {
     this.clearTokens();
-    window.dispatchEvent(new Event('auth:logout'));
+    window.dispatchEvent(new Event("auth:logout"));
   }
 
   // ===== 核心请求方法 =====
 
-  private async request<T>(config: { method: string; url: string; data?: any; signal?: AbortSignal }): Promise<ApiResponse<T>> {
+  private async request<T>(config: {
+    method: string;
+    url: string;
+    data?: any;
+    signal?: AbortSignal;
+  }): Promise<ApiResponse<T>> {
     try {
       const resp = await this.http.request<ApiResponse<T>>(config);
       return resp.data;
     } catch (err: any) {
-      if (err.code === 'ERR_CANCELED' || err.name === 'CanceledError') {
-        return { success: false, message: '已取消', code: 'CANCELED' };
+      if (err.code === "ERR_CANCELED" || err.name === "CanceledError") {
+        return { success: false, message: "已取消", code: "CANCELED" };
       }
-      return { success: false, message: err.message || '网络连接失败，请检查服务是否启动', code: err.code };
+      return {
+        success: false,
+        message: err.message || "网络连接失败，请检查服务是否启动",
+        code: err.code,
+      };
     }
   }
 
   get<T>(endpoint: string) {
-    return this.request<T>({ method: 'GET', url: endpoint });
+    return this.request<T>({ method: "GET", url: endpoint });
   }
 
   post<T>(endpoint: string, body?: any) {
-    return this.request<T>({ method: 'POST', url: endpoint, data: body });
+    return this.request<T>({ method: "POST", url: endpoint, data: body });
   }
 
   put<T>(endpoint: string, body?: any) {
-    return this.request<T>({ method: 'PUT', url: endpoint, data: body });
+    return this.request<T>({ method: "PUT", url: endpoint, data: body });
   }
 
   delete<T>(endpoint: string) {
-    return this.request<T>({ method: 'DELETE', url: endpoint });
+    return this.request<T>({ method: "DELETE", url: endpoint });
   }
 
   upload<T>(endpoint: string, formData: FormData, signal?: AbortSignal) {
-    return this.request<T>({ method: 'POST', url: endpoint, data: formData, signal });
+    return this.request<T>({
+      method: "POST",
+      url: endpoint,
+      data: formData,
+      signal,
+    });
   }
 
   /**
@@ -219,14 +256,17 @@ class ApiClient {
   async download(
     endpoint: string,
     formData: FormData,
-    options: { signal?: AbortSignal; onProgress?: (loaded: number, total: number) => void } = {},
+    options: {
+      signal?: AbortSignal;
+      onProgress?: (loaded: number, total: number) => void;
+    } = {},
   ): Promise<{ blob: Blob; getHeader: (name: string) => string | null }> {
     try {
       const resp = await this.http.request({
-        method: 'POST',
+        method: "POST",
         url: endpoint,
         data: formData,
-        responseType: 'blob',
+        responseType: "blob",
         timeout: 0,
         signal: options.signal,
         onDownloadProgress: (e) => {
@@ -235,11 +275,12 @@ class ApiClient {
       });
       return {
         blob: resp.data as Blob,
-        getHeader: (name: string) => (resp.headers[name.toLowerCase()] as string) ?? null,
+        getHeader: (name: string) =>
+          (resp.headers[name.toLowerCase()] as string) ?? null,
       };
     } catch (err: any) {
       if (axios.isCancel(err)) {
-        throw new DOMException('The operation was aborted.', 'AbortError');
+        throw new DOMException("The operation was aborted.", "AbortError");
       }
       throw err;
     }
@@ -247,71 +288,117 @@ class ApiClient {
 
   // ===== 处理端点（/v2 前缀） =====
 
-  async wordToImage(file: File, dpi: number, format: string, signal?: AbortSignal): Promise<ApiResponse<{ images: string[] }>> {
+  async wordToImage(
+    file: File,
+    dpi: number,
+    format: string,
+    signal?: AbortSignal,
+  ): Promise<ApiResponse<{ images: string[] }>> {
     const formData = new FormData();
-    formData.append('file', file);
-    formData.append('dpi', String(dpi));
-    formData.append('format', format);
-    return this.request<{ images: string[] }>({ method: 'POST', url: '/v2/word-to-image', data: formData, signal });
+    formData.append("file", file);
+    formData.append("dpi", String(dpi));
+    formData.append("format", format);
+    return this.request<{ images: string[] }>({
+      method: "POST",
+      url: "/v2/word-to-image",
+      data: formData,
+      signal,
+    });
   }
 
-  async wordToPdf(file: File, signal?: AbortSignal): Promise<{ blob: Blob; filename: string }> {
+  async wordToPdf(
+    file: File,
+    signal?: AbortSignal,
+  ): Promise<{ blob: Blob; filename: string }> {
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append("file", file);
     try {
-      const resp = await this.http.post('/v2/word-to-pdf', formData, { responseType: 'blob', timeout: 0, signal });
-      const cd = resp.headers['content-disposition'] || '';
-      const match = cd.match(/filename\*?=(?:UTF-8'')?([^;\s]+)/i);
-      const filename = match ? decodeURIComponent(match[1]) : file.name.replace(/\.docx$/i, '.pdf');
-      return { blob: resp.data as Blob, filename };
-    } catch (err: any) {
-      if (err.code === 'ERR_CANCELED' || err.name === 'CanceledError') {
-        throw new DOMException('The operation was aborted.', 'AbortError');
-      }
-      throw err;
-    }
-  }
-
-  async ocr(file: File, lang: string, signal?: AbortSignal): Promise<ApiResponse<{ text: string; confidence: number }>> {
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('lang', lang);
-    return this.request<{ text: string; confidence: number }>({ method: 'POST', url: '/v2/ocr', data: formData, signal });
-  }
-
-  async pdfToWord(file: File, mode: string, signal?: AbortSignal): Promise<{ blob: Blob; filename: string }> {
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('mode', mode);
-    try {
-      const resp = await this.http.post('/v2/pdf-to-word', formData, { responseType: 'blob', timeout: 0, signal });
-      const cd = resp.headers['content-disposition'] || '';
-      const match = cd.match(/filename\*?=(?:UTF-8'')?([^;\s]+)/i);
-      const filename = match ? decodeURIComponent(match[1]) : file.name.replace(/\.pdf$/i, '.docx');
-      return { blob: resp.data as Blob, filename };
-    } catch (err: any) {
-      if (err.code === 'ERR_CANCELED' || err.name === 'CanceledError') {
-        throw new DOMException('The operation was aborted.', 'AbortError');
-      }
-      throw err;
-    }
-  }
-
-  async removeWatermark(file: File, mask: Blob, signal?: AbortSignal): Promise<{ blob: Blob; filename: string }> {
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('mask', mask, 'mask.png');
-    try {
-      const resp = await this.http.post('/v2/remove-watermark', formData, { responseType: 'blob', timeout: 0, signal });
-      const cd = resp.headers['content-disposition'] || '';
+      const resp = await this.http.post("/v2/word-to-pdf", formData, {
+        responseType: "blob",
+        timeout: 0,
+        signal,
+      });
+      const cd = resp.headers["content-disposition"] || "";
       const match = cd.match(/filename\*?=(?:UTF-8'')?([^;\s]+)/i);
       const filename = match
-        ? decodeURIComponent(match[1]).replace(/"/g, '')
-        : `${file.name.replace(/\.[^.]+$/, '')}_去水印.png`;
+        ? decodeURIComponent(match[1])
+        : file.name.replace(/\.docx$/i, ".pdf");
       return { blob: resp.data as Blob, filename };
     } catch (err: any) {
-      if (err.code === 'ERR_CANCELED' || err.name === 'CanceledError') {
-        throw new DOMException('The operation was aborted.', 'AbortError');
+      if (err.code === "ERR_CANCELED" || err.name === "CanceledError") {
+        throw new DOMException("The operation was aborted.", "AbortError");
+      }
+      throw err;
+    }
+  }
+
+  async ocr(
+    file: File,
+    lang: string,
+    signal?: AbortSignal,
+  ): Promise<ApiResponse<{ text: string; confidence: number }>> {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("lang", lang);
+    return this.request<{ text: string; confidence: number }>({
+      method: "POST",
+      url: "/v2/ocr",
+      data: formData,
+      signal,
+    });
+  }
+
+  async pdfToWord(
+    file: File,
+    mode: string,
+    signal?: AbortSignal,
+  ): Promise<{ blob: Blob; filename: string }> {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("mode", mode);
+    try {
+      const resp = await this.http.post("/v2/pdf-to-word", formData, {
+        responseType: "blob",
+        timeout: 0,
+        signal,
+      });
+      const cd = resp.headers["content-disposition"] || "";
+      const match = cd.match(/filename\*?=(?:UTF-8'')?([^;\s]+)/i);
+      const filename = match
+        ? decodeURIComponent(match[1])
+        : file.name.replace(/\.pdf$/i, ".docx");
+      return { blob: resp.data as Blob, filename };
+    } catch (err: any) {
+      if (err.code === "ERR_CANCELED" || err.name === "CanceledError") {
+        throw new DOMException("The operation was aborted.", "AbortError");
+      }
+      throw err;
+    }
+  }
+
+  async removeWatermark(
+    file: File,
+    mask: Blob,
+    signal?: AbortSignal,
+  ): Promise<{ blob: Blob; filename: string }> {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("mask", mask, "mask.png");
+    try {
+      const resp = await this.http.post("/v2/remove-watermark", formData, {
+        responseType: "blob",
+        timeout: 0,
+        signal,
+      });
+      const cd = resp.headers["content-disposition"] || "";
+      const match = cd.match(/filename\*?=(?:UTF-8'')?([^;\s]+)/i);
+      const filename = match
+        ? decodeURIComponent(match[1]).replace(/"/g, "")
+        : `${file.name.replace(/\.[^.]+$/, "")}_去水印.png`;
+      return { blob: resp.data as Blob, filename };
+    } catch (err: any) {
+      if (err.code === "ERR_CANCELED" || err.name === "CanceledError") {
+        throw new DOMException("The operation was aborted.", "AbortError");
       }
       throw err;
     }
