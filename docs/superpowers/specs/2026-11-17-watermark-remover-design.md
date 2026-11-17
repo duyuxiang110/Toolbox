@@ -9,9 +9,10 @@
 
 ## 技术选型（已调研比选）
 
-- **AI 内核：LaMa（big-lama TorchScript 模型）**，在 service 内自行封装加载与推理（约 40 行）。
+- **AI 内核：LaMa（big-lama TorchScript 模型）**，通过 pip 包 `simple-lama-inpainting==0.1.2` 访问（用户决策，配套服务器升级 Python 3.10）。
   - 比选过程：star 最高的 IOPaint（23.3k）已归档停止维护且是完整应用壳；advimman/lama（10.4k）为研究代码不可产品化；zuruoke/watermark-removal（5.2k）走自动检测路线与手动涂抹交互不符且权重在 Google Drive。
-  - 不用 pip 包 `simple-lama-inpainting`：实测其 `torch.jit.load` 未传 `map_location`，对 CUDA trace 的 big-lama.pt 在新版 torch CPU 环境报 `aten::empty_strided` CUDA 错误；且 0.1.1+ 要求 Python≥3.10。自封装后仅依赖 torch/pillow/opencv/numpy，已用真实模型端到端验证（白字水印区域修复后均值与背景色一致）。
+  - 历史注：实施中曾因服务器 Python 3.8 只能装 0.1.0（其 `jit.load` 未传 `map_location`，CPU 环境实测报 `aten::empty_strided` CUDA 错误）而短暂改为自封装加载；0.1.2 已修复该 bug（`torch.jit.load(model_path, map_location=device)`）但要求 Python≥3.10。用户拍板升级 Python 后换回 0.1.2，并已用真实模型验证 CPU 加载 + 推理 + 裁回全链路。
+  - 0.1.2 的输出为 pad 到 8 倍数的尺寸（不裁回），service 层负责裁回原尺寸。
 - **不做 OpenCV inpaint 兜底**（用户决策）：LaMa 失败直接报明确错误，避免静默返回劣质结果。OpenCV 仅用于图像处理（读图、蒙版 resize、膨胀、编码）。
 
 ## 架构与数据流
@@ -73,7 +74,7 @@
 
 - `app/config.py`：`MAX_FILE_SIZES` 加 `"watermark": 10 * 1024 * 1024`
 - `app/main.py`：注册 `watermark.router`，前缀 `/api/v2`
-- `requirements.txt`：加 `torch>=2.0`（服务器先装 CPU 版：`pip install torch --index-url https://download.pytorch.org/whl/cpu`，避免拉 800MB CUDA 包；opencv/Pillow 由 paddleocr 既有依赖提供）
+- `requirements.txt`：加 `simple-lama-inpainting==0.1.2`（需 Python≥3.10；服务器先装 CPU 版 torch：`pip install torch==2.6.0+cpu -f https://mirrors.aliyun.com/pytorch-wheels/cpu/`，避免依赖解析拉 2GB+ CUDA 包；opencv/Pillow 由 paddleocr 既有依赖提供）
 
 ### 路由 `POST /remove-watermark`
 
@@ -86,25 +87,26 @@
 ### 服务 `watermark_service.py`
 
 - LaMa 懒加载模块级单例：首次请求加载后常驻内存（约 500MB），受 heavy_semaphore 保护不会并发加载
-- 依赖：仅 torch + Pillow + OpenCV（均已有或由 torch 带入）；不再使用 simple-lama-inpainting 包（新版 torch 下有 CUDA trace 模型加载 bug，且 0.1.1+ 要求 Python≥3.10）
+- 依赖：simple-lama-inpainting 0.1.2（懒导入，避免模块加载时拉起 torch）+ Pillow + OpenCV
 - **大图内存控制**（systemd `MemoryMax` 硬顶约束）：长边 > `MAX_INFERENCE_SIDE`（默认 1600，环境变量 LAMA_MAX_SIDE 可调）时走「裁剪-修复-贴回」：只裁蒙版包围盒 + margin（15% 或至少 64px）区域推理，结果贴回原图，修复区外像素零损失
 - `remove_watermark(image_path, mask_path, output_path) -> str`：
   1. PIL 读原图（转 RGB）；读蒙版转灰度
   2. 蒙版尺寸与原图不一致 → resize 到原图尺寸（最近邻）
   3. 蒙版二值化（>127）后膨胀 5px（覆盖水印半透明边缘光晕）；全黑蒙版抛 ValueError（路由转 422）
-  4. LaMa 推理（自封装 `_lama_inpaint`：归一化 → pad 到 8 倍数 → inference_mode 推理 → 裁回原尺寸）；异常上抛（路由转 503）
+  4. LaMa 推理（SimpleLama 实例；输出带 mod8 pad，service 裁回原尺寸）；异常上抛（路由转 503）
   5. 按扩展名保存（JPG 质量 95 / PNG 无损）
-- 模型文件通过 `LAMA_MODEL` 环境变量指向预置路径 `/opt/lingguang-api/models/big-lama.pt`（约 196MB，下载源 GitHub releases）；未设环境变量时回退 torch hub 缓存并自动下载（本地开发便利）；`LAMA_MODEL` 指向不存在的文件会直接报错，避免服务器连不上 GitHub 时首请求挂死
+- 模型文件通过 `LAMA_MODEL` 环境变量指向预置路径 `/opt/lingguang-api/models/big-lama.pt`（约 196MB，下载源 GitHub releases）；该逻辑由 simple-lama 包内部实现，行为一致（未设环境变量时回退 torch hub 缓存并自动下载；指向不存在文件直接报错）
 
 ## 部署注意点
 
-- `deploy.sh` 前先在服务器 venv 装 CPU 版 torch：`./venv/bin/pip install torch --index-url https://download.pytorch.org/whl/cpu`（约 200MB；直接跑 requirements 会拉 800MB+ CUDA 版）
-- LaMa 模型预置：本地下载 big-lama.pt（已在本机 `~/.cache/torch/hub/checkpoints/big-lama.pt`）后 scp 到服务器 `/opt/lingguang-api/models/`（service 文件已设 `LAMA_MODEL` 指向该路径）
+- **Python 3.10 升级前置**：`deploy/upgrade-python310.sh`（服务器 sudo 执行）——装 python3.10（Ubuntu 20.04 走 deadsnakes PPA，22.04+ 原生）→ 建 venv310 → 装 CPU torch（阿里云 pytorch-wheels 镜像，钉 2.6.0+cpu）→ 装 requirements → LaMa 冒烟 → 短暂停服切 venv（旧环境备份为 venv_old）→ 健康检查失败自动回滚
+- 升级后再跑 `deploy.sh` 同步代码；顺序颠倒会因旧 venv（py3.8）装不上 simple-lama 0.1.2 而失败
+- LaMa 模型预置：本地下载 big-lama.pt（已在本机 `~/.cache/torch/hub/checkpoints/big-lama.pt`）后 scp 到服务器 `/opt/lingguang-api/models/`（service 文件已设 `LAMA_MODEL` 指向该路径；升级脚本会预置模型时自动做真实推理冒烟）
 - `lingguang-api.service` 已调整：`MemoryMax` 1.5G→2G（LaMa 常驻 + 推理峰值），新增 `LAMA_MODEL` 环境变量与 models 目录创建；服务器需重新安装 unit 文件并 `systemctl daemon-reload`
 - 服务重启后首次去水印请求慢（模型加载约十几秒），属预期
 - nginx `/api/v2/` 已验证：client_max_body_size 60M、proxy_read_timeout 120s，满足 10MB 图 + CPU 推理耗时
 
 ## 测试
 
-- 后端 pytest：service 预处理逻辑（mock SimpleLama：蒙版 resize/膨胀/保存格式）、路由校验（401/422/413）
+- 后端 pytest：service 预处理逻辑（mock SimpleLama：蒙版 resize/膨胀/保存格式/mod8 pad 裁回）、路由校验（401/422/413/503）；路由测试固定放行磁盘/内存检查，不依赖宿主机余量
 - 前端：`tsc --noEmit` + `vite build` 通过；`electron:dev` 手动验证涂抹/撤销/清空/对比滑杆/下载全流程
