@@ -381,8 +381,6 @@ export default function WatermarkRemover({ onBack }: WatermarkRemoverProps) {
               <div className="wm-split-line" style={{ left: `${splitP}%` }}>
                 <div className="wm-split-grip">⇔</div>
               </div>
-              <span className="wm-tag wm-tag-left">原图</span>
-              <span className="wm-tag wm-tag-right">去除后</span>
             </div>
             <div className="wm-hint">拖动分割线对比：往右看原图，往左看去除效果</div>
           </div>
