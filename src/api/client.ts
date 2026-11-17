@@ -296,6 +296,26 @@ class ApiClient {
       throw err;
     }
   }
+
+  async removeWatermark(file: File, mask: Blob, signal?: AbortSignal): Promise<{ blob: Blob; filename: string }> {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('mask', mask, 'mask.png');
+    try {
+      const resp = await this.http.post('/v2/remove-watermark', formData, { responseType: 'blob', timeout: 0, signal });
+      const cd = resp.headers['content-disposition'] || '';
+      const match = cd.match(/filename\*?=(?:UTF-8'')?([^;\s]+)/i);
+      const filename = match
+        ? decodeURIComponent(match[1]).replace(/"/g, '')
+        : `${file.name.replace(/\.[^.]+$/, '')}_去水印.png`;
+      return { blob: resp.data as Blob, filename };
+    } catch (err: any) {
+      if (err.code === 'ERR_CANCELED' || err.name === 'CanceledError') {
+        throw new DOMException('The operation was aborted.', 'AbortError');
+      }
+      throw err;
+    }
+  }
 }
 
 export const api = new ApiClient();

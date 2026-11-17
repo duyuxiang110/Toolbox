@@ -5,7 +5,7 @@
  */
 import { useState } from 'react';
 import { Card, Tag } from 'antd';
-import { FilePdfOutlined, ToolOutlined, ScanOutlined, PictureOutlined, FilePptOutlined, FileWordOutlined, FileImageOutlined, VideoCameraOutlined, SplitCellsOutlined, MergeCellsOutlined } from '@ant-design/icons';
+import { FilePdfOutlined, ToolOutlined, ScanOutlined, PictureOutlined, FilePptOutlined, FileWordOutlined, FileImageOutlined, VideoCameraOutlined, SplitCellsOutlined, MergeCellsOutlined, HighlightOutlined } from '@ant-design/icons';
 import ImageToPdf from './tools/ImageToPdf';
 import OcrTool from './tools/OcrTool';
 import ImageProcessor from './tools/ImageProcessor';
@@ -16,9 +16,10 @@ import WordToPdf from './tools/WordToPdf';
 import VideoCompress from './tools/VideoCompress';
 import PdfSplit from './tools/PdfSplit';
 import PdfMerge from './tools/PdfMerge';
+import WatermarkRemover from './tools/WatermarkRemover';
 import './Toolbox.less';
 
-type ToolKey = 'image-to-pdf' | 'ocr' | 'image-processor' | 'pdf-to-ppt' | 'pdf-to-word' | 'word-to-image' | 'word-to-pdf' | 'video-compress' | 'pdf-split' | 'pdf-merge';
+type ToolKey = 'image-to-pdf' | 'ocr' | 'image-processor' | 'pdf-to-ppt' | 'pdf-to-word' | 'word-to-image' | 'word-to-pdf' | 'video-compress' | 'pdf-split' | 'pdf-merge' | 'watermark-remover';
 
 interface ToolMeta {
   key: ToolKey;
@@ -104,6 +105,14 @@ const TOOLS: ToolMeta[] = [
     available: true,
   },
   {
+    key: 'watermark-remover',
+    title: '图片去水印',
+    desc: 'AI 涂抹去除水印，效果前后对比',
+    icon: <HighlightOutlined />,
+    color: '#f43f5e',
+    available: true,
+  },
+  {
     key: 'video-compress',
     title: '视频压缩',
     desc: '压缩视频体积 / 转换视频格式',
@@ -146,6 +155,9 @@ export default function Toolbox() {
   }
   if (activeTool === 'video-compress') {
     return <VideoCompress onBack={() => setActiveTool(null)} />;
+  }
+  if (activeTool === 'watermark-remover') {
+    return <WatermarkRemover onBack={() => setActiveTool(null)} />;
   }
 
   // 工具列表

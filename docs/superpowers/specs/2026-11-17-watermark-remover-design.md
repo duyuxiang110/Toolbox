@@ -85,19 +85,23 @@
 ### 服务 `watermark_service.py`
 
 - LaMa 懒加载模块级单例：首次请求加载后常驻内存（约 500MB），受 heavy_semaphore 保护不会并发加载
+- 依赖版本用 `simple-lama-inpainting==0.1.0`（0.1.1+ 要求 Python≥3.10，服务器为 apt python3）
+- **大图内存控制**（systemd `MemoryMax` 硬顶约束）：0.1.0 无内置缩放，长边 > `MAX_INFERENCE_SIDE`（默认 1600，环境变量 LAMA_MAX_SIDE 可调）时走「裁剪-修复-贴回」：只裁蒙版包围盒 + margin（15% 或至少 64px）区域推理，结果贴回原图，修复区外像素零损失
 - `remove_watermark(image_path, mask_path, output_path) -> str`：
   1. PIL 读原图（转 RGB）；读蒙版转灰度
   2. 蒙版尺寸与原图不一致 → resize 到原图尺寸（最近邻）
-  3. 蒙版二值化（>127）后膨胀 5px（覆盖水印半透明边缘光晕）
-  4. `SimpleLama()(image, mask)` 推理
+  3. 蒙版二值化（>127）后膨胀 5px（覆盖水印半透明边缘光晕）；全黑蒙版抛 ValueError（路由转 422）
+  4. `SimpleLama()(image, mask)` 推理；异常上抛（路由转 503）
   5. 按扩展名保存（JPG 质量 95 / PNG 无损）
-- 模型文件首次运行自动下载（big-lama.pt 约 200MB，源 GitHub）；服务器不通 GitHub 时按部署文档手动预下载至 torch hub 缓存
+- 模型文件通过 `LAMA_MODEL` 环境变量指向预置路径 `/opt/lingguang-api/models/big-lama.pt`（约 196MB，下载源 GitHub releases）；指向不存在的文件会直接报错而非运行时下载，避免服务器连不上 GitHub 时首请求挂死
 
 ## 部署注意点
 
 - `deploy.sh` 首次安装 torch CPU 需约 2GB 磁盘与较长下载时间（阿里云 pip 镜像）
-- LaMa 模型需预下载到服务器 torch 缓存目录（部署文档给出命令），否则首次请求会尝试连 GitHub
-- 服务重启后首次去水印请求慢（模型加载），属预期
+- LaMa 模型预置：本地下载 big-lama.pt 后 scp 到服务器 `/opt/lingguang-api/models/`（service 文件已设 `LAMA_MODEL` 指向该路径）
+- `lingguang-api.service` 已调整：`MemoryMax` 1.5G→2G（LaMa 常驻 + 推理峰值），新增 `LAMA_MODEL` 环境变量与 models 目录创建；服务器需重新安装 unit 文件并 `systemctl daemon-reload`
+- 服务重启后首次去水印请求慢（模型加载约十几秒），属预期
+- nginx `/api/v2/` 已验证：client_max_body_size 60M、proxy_read_timeout 120s，满足 10MB 图 + CPU 推理耗时
 
 ## 测试
 

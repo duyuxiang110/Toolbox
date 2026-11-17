@@ -1,0 +1,168 @@
+/* 图片去水印工具样式 */
+
+.wm-options {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.wm-brush {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.wm-brush-val {
+  min-width: 44px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.wm-strokes-count {
+  margin-left: auto;
+}
+
+/* ===== 涂抹画布 ===== */
+.wm-canvas-preview {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+.wm-canvas-wrap {
+  position: relative;
+  cursor: none; /* 用自绘圆圈光标替代 */
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.25);
+  background: #fff;
+  touch-action: none; /* 触控板/触屏涂抹不触发滚动 */
+}
+
+.wm-canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+}
+
+.wm-canvas-mask {
+  z-index: 1;
+}
+
+.wm-brush-cursor {
+  position: absolute;
+  z-index: 2;
+  border: 1.5px solid rgba(255, 60, 60, 0.9);
+  border-radius: 50%;
+  background: rgba(255, 80, 80, 0.08);
+  pointer-events: none;
+}
+
+.wm-processing {
+  text-align: center;
+  padding: 60px 0;
+
+  .wm-processing-text {
+    color: #888;
+    margin-top: 16px;
+  }
+
+  .wm-processing-sub {
+    color: #aaa;
+    font-size: 12px;
+    margin-top: 4px;
+  }
+}
+
+.wm-foot-hint {
+  margin-top: 8px;
+}
+
+/* ===== 结果对比滑杆 ===== */
+.wm-result-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.wm-compare {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.25);
+  background: #fff;
+  cursor: ew-resize;
+  touch-action: none;
+  user-select: none;
+}
+
+.wm-layer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  pointer-events: none;
+}
+
+.wm-layer-before {
+  z-index: 1;
+}
+
+.wm-split-line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 2;
+  width: 2px;
+  background: #fff;
+  box-shadow: 0 0 6px rgba(0, 0, 0, 0.5);
+  transform: translateX(-1px);
+  pointer-events: none;
+}
+
+.wm-split-grip {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #fff;
+  color: #333;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+}
+
+.wm-tag {
+  position: absolute;
+  top: 10px;
+  z-index: 3;
+  padding: 2px 10px;
+  border-radius: 10px;
+  font-size: 12px;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+}
+
+.wm-tag-left {
+  left: 10px;
+}
+
+.wm-tag-right {
+  right: 10px;
+}
+
+.wm-hint {
+  color: var(--text-muted);
+  font-size: 12px;
+}
